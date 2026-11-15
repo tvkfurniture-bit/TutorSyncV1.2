@@ -469,6 +469,10 @@ const App = (function () {
     </svg>`
   };
 
+  function getShareBaseUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
   function esc(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -673,20 +677,42 @@ const App = (function () {
   }
 
   function renderRoute() {
-    updateNav();
-    const h = location.hash || '#/';
-    if (h === '#/' || h === '') renderLanding();
-    else if (h === '#/register-student') renderStudentRegistration();
-    else if (h === '#/register-tutor') renderTutorRegistration();
-    else if (h === '#/login') renderLogin();
-    else if (h === '#/student') renderStudentPortal();
-    else if (h === '#/tutor') renderTutorPortal();
-    else if (h === '#/admin') renderAdminShell();
-    else if (h === '#/privacy') renderLegal('privacy');
-    else if (h === '#/terms') renderLegal('terms');
-    else if (h === '#/refund-policy') renderLegal('refund');
-    else renderLanding();
+  updateNav();
+  const rawHash = location.hash || '#/';
+  const parts = rawHash.split('?');
+  const h = parts[0] || '#/';
+  const qs = parts[1] || '';
+  if (h === '#/' || h === '') { renderLanding(); if (qs) handleDeepLink(qs); }
+  else if (h === '#/register-student') renderStudentRegistration();
+  else if (h === '#/register-tutor') renderTutorRegistration();
+  else if (h === '#/login') renderLogin();
+  else if (h === '#/student') renderStudentPortal();
+  else if (h === '#/tutor') renderTutorPortal();
+  else if (h === '#/admin') renderAdminShell();
+  else if (h === '#/privacy') renderLegal('privacy');
+  else if (h === '#/terms') renderLegal('terms');
+  else if (h === '#/refund-policy') renderLegal('refund');
+  else renderLanding();
+}
+
+async function handleDeepLink(qs) {
+  const params = new URLSearchParams(qs);
+  const needRef = params.get('need');
+  const tutorRef = params.get('tutor');
+  if (!needRef && !tutorRef) return;
+  openModal('Loading Shared Opening...', '<p>Fetching verified details...</p>');
+  const dir = await loadPublicDirectory(false);
+  if (needRef) {
+    const item = (dir.students || []).find(s => s.refCode === needRef);
+    if (item) return openModal('Shared Tuition Opening — ' + needRef, '<p class="help-text">Verified student requirement shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'students'));
+    return openModal('Opening Filled or Unavailable', '<p>This tuition opening (' + esc(needRef) + ') has already been assigned or is no longer active.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'students\')">Browse Other Openings</button>');
   }
+  if (tutorRef) {
+    const item = (dir.tutors || []).find(t => t.refCode === tutorRef);
+    if (item) return openModal('Shared Verified Tutor — ' + tutorRef, '<p class="help-text">Verified tutor profile shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'tutors'));
+    return openModal('Tutor Unavailable', '<p>This tutor profile (' + esc(tutorRef) + ') is currently unavailable.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'tutors\')">Browse Available Tutors</button>');
+  }
+}
 
   /* ========================================================================
    * PUBLIC DIRECTORY (ANONYMIZED SEARCH & SCROLLABLE CARDS + MODAL)
@@ -709,8 +735,7 @@ const App = (function () {
 
   function renderDirCardHtml(item, tab) {
   if (tab === 'tutors') {
-    const shareText = 'Verified Tutor on TutorSync (' + item.refCode + '): ' + (item.qualifications || 'Qualified Tutor') + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + '). Find tutors free: https://tvkfurniture-bit.github.io/tutorsync/';
-    return `
+    const shareText = 'Verified Tutor on TutorSync (' + item.refCode + '): ' + (item.qualifications || 'Qualified Tutor') + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + '). View & Request free: ' + getShareBaseUrl() + '#/?tutor=' + encodeURIComponent(item.refCode);return `
       <div class="dir-card">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
@@ -736,8 +761,7 @@ const App = (function () {
       </div>
     `;
   }
-  const shareText = 'Tuition Opening on TutorSync (' + item.refCode + '): ' + item.classGrade + ' ' + item.board + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Online') + ', Budget ₹' + item.budgetPerMonth + '/mo). Apply free: https://tvkfurniture-bit.github.io/tutorsync/';
-  return `
+  const shareText = 'Tuition Opening on TutorSync (' + item.refCode + '): ' + item.classGrade + ' ' + item.board + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Online') + ', Budget ₹' + item.budgetPerMonth + '/mo). Apply free: ' + getShareBaseUrl() + '#/?need=' + encodeURIComponent(item.refCode);return `
     <div class="dir-card">
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
