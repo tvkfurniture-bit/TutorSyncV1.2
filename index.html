@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TutorSync — Managed Tutor–Student Matching &amp; Academic Coordination</title>
+  <meta name="description" content="Find verified home and online tutors free across India (CBSE, ICSE, WB, JEE/NEET). Transparent monthly billing and managed coordination." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="TutorSync — Verified Home &amp; Online Tutors (100% Free Registration)" />
+<meta property="og:description" content="Students &amp; Tutors join free. Personally verified matching, demo class option, and transparent monthly UPI billing." />
+<meta property="og:url" content="https://tvkfurniture-bit.github.io/tutorsync/" />
+<meta property="og:image" content="https://tvkfurniture-bit.github.io/tutorsync/preview.png" />
+<meta name="twitter:card" content="summary_large_image" />
   <style>
     :root {
       --bg: #ffffff;
@@ -689,53 +696,60 @@ const App = (function () {
   }
 
   function renderDirCardHtml(item, tab) {
-    if (tab === 'tutors') {
-      return `
-        <div class="dir-card">
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
-              <span class="badge badge-green">Verified Tutor</span>
-              <span class="badge badge-blue">${esc(item.teachingMode)}</span>
-            </div>
-            <h4 style="margin-bottom:0.2rem">${esc(item.qualifications || 'Qualified Educator')}</h4>
-            <div class="dir-meta">
-              <span><b>Ref:</b> ${esc(item.refCode)} · ${item.experienceYears} yrs exp.</span>
-              <span><b>Area:</b> ${esc(item.generalArea || 'Flexible')}</span>
-              <span><b>Expected Fee:</b> ${inr(item.expectedMonthlyFee)}/mo</span>
-            </div>
-            <div class="dir-tags">
-              ${(item.subjects || []).slice(0,4).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
-              ${(item.boardExpertise || []).map(b => `<span class="dir-tag">${esc(b)}</span>`).join('')}
-            </div>
-            ${item.shortBio ? `<p style="font-size:0.8rem;margin:0.35rem 0 0">${esc(item.shortBio)}</p>` : ''}
-          </div>
-          <button class="btn btn-primary btn-sm btn-block" onclick="App.requestMatchFromDir('${esc(item.refCode)}', ${esc(JSON.stringify(item.subjects||[]))})">Request This Tutor</button>
-        </div>
-      `;
-    }
+  if (tab === 'tutors') {
+    const shareText = 'Verified Tutor on TutorSync (' + item.refCode + '): ' + (item.qualifications || 'Qualified Tutor') + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + '). Find tutors free: https://tvkfurniture-bit.github.io/tutorsync/';
     return `
       <div class="dir-card">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
-            <span class="badge badge-blue">Verified Requirement</span>
-            <span class="badge">${esc(item.teachingMode)}</span>
+            <span class="badge badge-green">Verified Tutor</span>
+            <span class="badge badge-blue">${esc(item.teachingMode)}</span>
           </div>
-          <h4 style="margin-bottom:0.2rem">${esc(item.classGrade)} · ${esc(item.board)}</h4>
+          <h4 style="margin-bottom:0.2rem">${esc(item.qualifications || 'Qualified Educator')}</h4>
           <div class="dir-meta">
-            <span><b>Ref:</b> ${esc(item.refCode)}</span>
-            <span><b>Location:</b> ${esc(item.generalArea || 'Online')}</span>
-            <span><b>Schedule:</b> ${esc((item.preferredDays||[]).join(', '))} ${item.preferredTime ? '· ' + esc(item.preferredTime) : ''}</span>
-            <span><b>Budget:</b> ${inr(item.budgetPerMonth)}/mo</span>
+            <span><b>Ref:</b> ${esc(item.refCode)} · ${item.experienceYears} yrs exp.</span>
+            <span><b>Area:</b> ${esc(item.generalArea || 'Flexible')}</span>
+            <span><b>Expected Fee:</b> ${inr(item.expectedMonthlyFee)}/mo</span>
           </div>
           <div class="dir-tags">
-            ${(item.subjects || []).slice(0,5).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
+            ${(item.subjects || []).slice(0,4).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
+            ${(item.boardExpertise || []).map(b => `<span class="dir-tag">${esc(b)}</span>`).join('')}
           </div>
+          ${item.shortBio ? `<p style="font-size:0.8rem;margin:0.35rem 0 0">${esc(item.shortBio)}</p>` : ''}
         </div>
-        <button class="btn btn-accent btn-sm btn-block" onclick="App.applyTeachFromDir('${esc(item.refCode)}')">Apply to Teach</button>
+        <div style="display:flex;gap:0.4rem">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="App.requestMatchFromDir('${esc(item.refCode)}', ${esc(JSON.stringify(item.subjects||[]))})">Request Tutor</button>
+          <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText)}">Share</a>
+        </div>
       </div>
     `;
   }
-
+  const shareText = 'Tuition Opening on TutorSync (' + item.refCode + '): ' + item.classGrade + ' ' + item.board + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Online') + ', Budget ₹' + item.budgetPerMonth + '/mo). Apply free: https://tvkfurniture-bit.github.io/tutorsync/';
+  return `
+    <div class="dir-card">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
+          <span class="badge badge-blue">Verified Requirement</span>
+          <span class="badge">${esc(item.teachingMode)}</span>
+        </div>
+        <h4 style="margin-bottom:0.2rem">${esc(item.classGrade)} · ${esc(item.board)}</h4>
+        <div class="dir-meta">
+          <span><b>Ref:</b> ${esc(item.refCode)}</span>
+          <span><b>Location:</b> ${esc(item.generalArea || 'Online')}</span>
+          <span><b>Schedule:</b> ${esc((item.preferredDays||[]).join(', '))} ${item.preferredTime ? '· ' + esc(item.preferredTime) : ''}</span>
+          <span><b>Budget:</b> ${inr(item.budgetPerMonth)}/mo</span>
+        </div>
+        <div class="dir-tags">
+          ${(item.subjects || []).slice(0,5).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:0.4rem">
+        <button class="btn btn-accent btn-sm" style="flex:1" onclick="App.applyTeachFromDir('${esc(item.refCode)}')">Apply to Teach</button>
+        <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText)}">Share</a>
+      </div>
+    </div>
+  `;
+}
   function renderDirectoryStrip() {
     const track = document.getElementById('dir-scroll-track');
     if (!track) return;
@@ -1273,6 +1287,7 @@ const App = (function () {
           <span class="badge badge-green">Registration Confirmed</span>
           <h2 style="margin-top:0.75rem">Student ID: ${esc(res.studentId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. A confirmation email has been sent. Once verified, you will receive your portal activation code and curated tutor matches.</p>
+          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: https://tvkfurniture-bit.github.io/tutorsync/')}">Share in Parent Group</a>
           <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
         </div>`;
     } catch (err) {}
@@ -1385,6 +1400,8 @@ const App = (function () {
           <span class="badge badge-green">Application Received</span>
           <h2 style="margin-top:0.75rem">Tutor ID: ${esc(res.tutorId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. Our verification team will review your profile and email your portal activation code once approved.</p>
+          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: https://tvkfurniture-bit.github.io/tutorsync/')}">Share in Parent Group</a>
+          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just joined TutorSync as a tutor (100% free, zero lead fees)! Teachers & students can register here: https://tvkfurniture-bit.github.io/tutorsync/')}">Share with Fellow Tutors</a>
           <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
         </div>`;
     } catch (err) {}
