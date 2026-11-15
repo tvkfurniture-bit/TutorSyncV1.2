@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TutorSync — Managed Tutor–Student Matching &amp; Academic Coordination</title>
   <meta name="description" content="Find verified home and online tutors free across India (CBSE, ICSE, WB, JEE/NEET). Transparent monthly billing and managed coordination." />
-<meta property="og:type" content="website" />
-<meta property="og:title" content="TutorSync — Verified Home &amp; Online Tutors (100% Free Registration)" />
-<meta property="og:description" content="Students &amp; Tutors join free. Personally verified matching, demo class option, and transparent monthly UPI billing." />
-<meta property="og:url" content="https://tvkfurniture-bit.github.io/TutorSyncV1.2/" />
-<meta property="og:image" content="https://tvkfurniture-bit.github.io/TutorSyncV1.2/preview.png" />
-<meta name="twitter:card" content="summary_large_image" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="TutorSync — Verified Home &amp; Online Tutors (100% Free Registration)" />
+  <meta property="og:description" content="Students &amp; Tutors join free. Personally verified matching, demo class option, and transparent monthly UPI billing." />
+  <meta property="og:url" content="https://tvkfurniture-bit.github.io/TutorSyncV1.2/" />
+  <meta property="og:image" content="https://tvkfurniture-bit.github.io/TutorSyncV1.2/preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
   <style>
     :root {
       --bg: #ffffff;
@@ -31,7 +31,7 @@
       --danger-bg: #fee2e2;
       --radius: 10px;
       --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-      --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+      --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.09);
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; }
@@ -52,9 +52,10 @@
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
       padding: 0.62rem 1.15rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem;
-      border: 1px solid transparent; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+      border: 1px solid transparent; cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s;
       font-family: inherit; white-space: nowrap; text-decoration: none !important;
     }
+    .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
@@ -120,27 +121,32 @@
     .nav-actions { display: flex; align-items: center; gap: 0.55rem; }
     .mobile-menu-btn { display: none; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem; cursor: pointer; font-size: 1.1rem; }
 
-    /* Academic Hero & Einstein Chalkboard */
+    /* Academic Hero & Interactive Quick-Check */
     .hero {
-      padding: 3.25rem 0 3rem;
+      padding: 3rem 0 2.75rem;
       background-color: var(--surface);
       background-image: radial-gradient(#cbd5e1 0.9px, transparent 0.9px);
       background-size: 24px 24px;
       border-bottom: 1px solid var(--border);
     }
-    .hero-grid { display: grid; grid-template-columns: 1.2fr 0.95fr; gap: 2.25rem; align-items: center; }
+    .hero-grid { display: grid; grid-template-columns: 1.22fr 0.95fr; gap: 2.25rem; align-items: center; }
     .hero-pill {
       display: inline-flex; align-items: center; gap: 0.4rem;
       padding: 0.32rem 0.85rem; background: var(--accent-light); color: #0369a1;
-      border-radius: 999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 1rem;
+      border-radius: 999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.85rem;
     }
-    .hero h1 { font-size: clamp(1.85rem, 3.6vw, 2.7rem); margin-bottom: 0.9rem; }
-    .hero p { font-size: 1.04rem; margin-bottom: 1.45rem; }
-    .hero-ctas { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-bottom: 1.35rem; }
+    .hero h1 { font-size: clamp(1.85rem, 3.6vw, 2.65rem); margin-bottom: 0.8rem; }
+    .hero p { font-size: 1.02rem; margin-bottom: 1.2rem; }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 1.1rem; }
+    .quick-check-box {
+      background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--accent);
+      border-radius: 12px; padding: 1rem; box-shadow: var(--shadow-md); margin-bottom: 1rem;
+    }
+    .quick-check-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 0.5rem; align-items: end; }
     .einstein-quote {
       display: flex; align-items: flex-start; gap: 0.7rem;
       background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--accent);
-      border-radius: 8px; padding: 0.75rem 0.95rem; font-size: 0.85rem; color: var(--text-muted);
+      border-radius: 8px; padding: 0.75rem 0.95rem; font-size: 0.84rem; color: var(--text-muted);
     }
     .chalkboard-card {
       background: var(--primary); color: #f8fafc; border-radius: 14px;
@@ -152,7 +158,14 @@
       font-size: 0.78rem; color: #cbd5e1;
     }
 
-    /* Scrollable Showcase & Live Directory */
+    /* Live Directory, Filter Pills & Portal Preview */
+    .live-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; font-weight: 700; color: #166534; background: var(--success-bg); padding: 0.2rem 0.6rem; border-radius: 999px; margin-bottom: 0.4rem; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulseDot 1.6s infinite; }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(1.25); } }
+    .filter-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .filter-pill { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 0.28rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .filter-pill.active, .filter-pill:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
     .gallery-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; flex-wrap: wrap; }
     .gallery-controls { display: flex; gap: 0.45rem; align-items: center; }
     .scroll-track {
@@ -165,6 +178,7 @@
       flex: 0 0 300px; scroll-snap-align: start;
       background: #fff; border: 1px solid var(--border); border-radius: 12px;
       overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     .edu-slide-art {
       background: var(--surface); border-bottom: 1px solid var(--border);
@@ -178,12 +192,30 @@
       flex: 0 0 315px; scroll-snap-align: start;
       background: #fff; border: 1px solid var(--border); border-radius: 12px;
       padding: 1.05rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+    .dir-card:hover, .edu-slide:hover, .hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
     .dir-modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; }
     .dir-modal-grid .dir-card { flex: none; width: 100%; }
     .dir-meta { font-size: 0.83rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; }
     .dir-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.35rem 0; }
     .dir-tag { font-size: 0.74rem; background: var(--surface-alt); color: var(--primary); padding: 0.18rem 0.5rem; border-radius: 999px; font-weight: 600; }
+
+    /* Sample Portal Preview Mockup */
+    .preview-shell {
+      background: #fff; border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; box-shadow: var(--shadow-md); max-width: 920px; margin: 0 auto;
+    }
+    .preview-bar {
+      background: var(--primary); color: #fff; padding: 0.75rem 1.1rem;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .preview-body { padding: 1.25rem; background: var(--surface); }
+
+    /* Scroll Reveal */
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.45s ease, transform 0.45s ease; }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 
     /* Landing Sections & Multi-Column Footer */
     .section { padding: 3.1rem 0; }
@@ -305,20 +337,9 @@
     .score-fill { height: 100%; background: var(--accent); }
     .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
 
-    .dir-card, .edu-slide { transition: transform 0.18s ease, box-shadow 0.18s ease; }
-.dir-card:hover, .edu-slide:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.live-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: #166534; background: var(--success-bg); padding: 0.2rem 0.6rem; border-radius: 999px; margin-bottom: 0.4rem; }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulseDot 1.6s infinite; }
-@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(1.25); } }
-.quick-check-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 0.95rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
-.quick-check-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem; align-items: end; }
-.filter-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
-.filter-pill { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 0.28rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-.filter-pill.active, .filter-pill:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-@media (max-width: 720px) { .quick-check-row { grid-template-columns: 1fr; } }
-
     @media (max-width: 960px) {
       .hero-grid, .footer-grid { grid-template-columns: 1fr; }
+      .quick-check-row { grid-template-columns: 1fr 1fr; }
       .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .grid-3 { grid-template-columns: 1fr; }
       .sidebar {
@@ -330,7 +351,7 @@
     @media (max-width: 720px) {
       .nav-links { display: none; }
       .mobile-menu-btn { display: inline-flex; }
-      .form-grid, .grid-2, .grid-4, .dir-modal-grid { grid-template-columns: 1fr; }
+      .form-grid, .grid-2, .grid-4, .dir-modal-grid, .quick-check-row { grid-template-columns: 1fr; }
       .main-area { padding: 1rem; }
       .edu-slide, .dir-card { flex: 0 0 268px; }
       .mobile-cta-bar.visible-mobile { display: flex; }
@@ -355,9 +376,9 @@
       </div>
       <nav class="nav-links" id="public-nav">
         <a href="#/" onclick="App.openDirectoryModal('tutors');return false;">Browse Tutors &amp; Needs</a>
+        <a href="#/" onclick="App.scrollToSection('portal-preview')">Portal Preview</a>
         <a href="#/" onclick="App.scrollToSection('how-it-works')">How It Works</a>
         <a href="#/" onclick="App.scrollToSection('benefits')">Benefits</a>
-        <a href="#/" onclick="App.scrollToSection('managed-process')">Process</a>
         <a href="#/" onclick="App.scrollToSection('faq')">FAQ</a>
         <a href="#/" onclick="App.scrollToSection('contact')">Contact</a>
       </nav>
@@ -396,11 +417,10 @@
 /**
  * ============================================================================
  * TUTORSYNC FRONTEND APPLICATION (GitHub Pages Single-File SPA)
- * Autopilot + Critical Gates · World-Class India EdTech Edition
+ * Dynamic, Viral, India-First Edition + Autopilot Critical Gates
  * ============================================================================
  */
 window.TUTORSYNC_CONFIG = {
-  // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT /exec URL BELOW BEFORE PUSHING TO GITHUB PAGES:
   DEFAULT_API_URL: 'https://script.google.com/macros/s/AKfycbwulAkBvSc8OKJtUowRLXOqEdpGPv_20Eod_cBoFe-h2R9Ldqmzuc5kU3rcWhf0FD_NaA/exec',
   STORAGE_API_KEY: 'tutorsync_gas_url',
   STORAGE_SESSION_KEY: 'tutorsync_session'
@@ -422,6 +442,8 @@ const App = (function () {
     dirTab: 'tutors',
     dirQuery: '',
     dirMode: '',
+    portalPreviewTab: 'parent',
+    referralCode: localStorage.getItem('tutorsync_ref') || '',
     prefillStudent: null,
     prefillTutor: null,
     adminModule: 'gates',
@@ -470,8 +492,8 @@ const App = (function () {
   };
 
   function getShareBaseUrl() {
-  return window.location.origin + window.location.pathname;
-}
+    return window.location.origin + window.location.pathname;
+  }
 
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -611,15 +633,27 @@ const App = (function () {
     return state.publicDirectory;
   }
 
+  function initScrollReveal() {
+    const els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(el => el.classList.add('in'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.08 });
+    els.forEach(el => io.observe(el));
+  }
+
   function updateNav() {
     const loggedIn = !!(state.session && state.session.sessionToken);
-    const h = location.hash || '#/';
-    const showMobileBar = !loggedIn && (h === '#/' || h === '');
+    const rawHash = (location.hash || '#/').split('?')[0];
+    const showMobileBar = !loggedIn && (rawHash === '#/' || rawHash === '');
     document.getElementById('nav-login-btn').classList.toggle('hidden', loggedIn);
     document.getElementById('nav-find-btn').classList.toggle('hidden', loggedIn);
     document.getElementById('nav-portal-btn').classList.toggle('hidden', !loggedIn);
     document.getElementById('nav-logout-btn').classList.toggle('hidden', !loggedIn);
-    document.getElementById('public-nav').classList.toggle('hidden', loggedIn && h.indexOf('#/admin') === 0);
+    document.getElementById('public-nav').classList.toggle('hidden', loggedIn && rawHash.indexOf('#/admin') === 0);
     document.getElementById('mobile-cta-bar').classList.toggle('visible-mobile', showMobileBar);
     document.body.classList.toggle('has-mobile-bar', showMobileBar);
   }
@@ -647,7 +681,8 @@ const App = (function () {
   }
 
   function scrollToSection(id) {
-    if (location.hash && location.hash !== '#/' && location.hash !== '') {
+    const rawHash = (location.hash || '#/').split('?')[0];
+    if (rawHash !== '#/' && rawHash !== '') {
       location.hash = '#/';
       setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100);
     } else {
@@ -677,45 +712,51 @@ const App = (function () {
   }
 
   function renderRoute() {
-  updateNav();
-  const rawHash = location.hash || '#/';
-  const parts = rawHash.split('?');
-  const h = parts[0] || '#/';
-  const qs = parts[1] || '';
-  if (h === '#/' || h === '') { renderLanding(); if (qs) handleDeepLink(qs); }
-  else if (h === '#/register-student') renderStudentRegistration();
-  else if (h === '#/register-tutor') renderTutorRegistration();
-  else if (h === '#/login') renderLogin();
-  else if (h === '#/student') renderStudentPortal();
-  else if (h === '#/tutor') renderTutorPortal();
-  else if (h === '#/admin') renderAdminShell();
-  else if (h === '#/privacy') renderLegal('privacy');
-  else if (h === '#/terms') renderLegal('terms');
-  else if (h === '#/refund-policy') renderLegal('refund');
-  else renderLanding();
-}
+    updateNav();
+    const rawHash = location.hash || '#/';
+    const parts = rawHash.split('?');
+    const h = parts[0] || '#/';
+    const qs = parts[1] || '';
+    if (h === '#/' || h === '') { renderLanding(); if (qs) handleDeepLink(qs); }
+    else if (h === '#/register-student') renderStudentRegistration();
+    else if (h === '#/register-tutor') renderTutorRegistration();
+    else if (h === '#/login') renderLogin();
+    else if (h === '#/student') renderStudentPortal();
+    else if (h === '#/tutor') renderTutorPortal();
+    else if (h === '#/admin') renderAdminShell();
+    else if (h === '#/privacy') renderLegal('privacy');
+    else if (h === '#/terms') renderLegal('terms');
+    else if (h === '#/refund-policy') renderLegal('refund');
+    else renderLanding();
+  }
 
-async function handleDeepLink(qs) {
-  const params = new URLSearchParams(qs);
-  const needRef = params.get('need');
-  const tutorRef = params.get('tutor');
-  if (!needRef && !tutorRef) return;
-  openModal('Loading Shared Opening...', '<p>Fetching verified details...</p>');
-  const dir = await loadPublicDirectory(false);
-  if (needRef) {
-    const item = (dir.students || []).find(s => s.refCode === needRef);
-    if (item) return openModal('Shared Tuition Opening — ' + needRef, '<p class="help-text">Verified student requirement shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'students'));
-    return openModal('Opening Filled or Unavailable', '<p>This tuition opening (' + esc(needRef) + ') has already been assigned or is no longer active.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'students\')">Browse Other Openings</button>');
+  async function handleDeepLink(qs) {
+    const params = new URLSearchParams(qs);
+    const needRef = params.get('need');
+    const tutorRef = params.get('tutor');
+    const refCode = params.get('ref');
+    if (refCode) {
+      state.referralCode = refCode;
+      localStorage.setItem('tutorsync_ref', refCode);
+      toast('Referral applied: ' + refCode + '. Register free to link it!', 'success');
+    }
+    if (!needRef && !tutorRef) return;
+    openModal('Loading Shared Opening...', '<p>Fetching verified details...</p>');
+    const dir = await loadPublicDirectory(false);
+    if (needRef) {
+      const item = (dir.students || []).find(s => s.refCode === needRef);
+      if (item) return openModal('Shared Tuition Opening — ' + needRef, '<p class="help-text">Verified student requirement shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'students'));
+      return openModal('Opening Filled or Unavailable', '<p>This tuition opening (' + esc(needRef) + ') has already been assigned or is no longer active.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'students\')">Browse Other Openings</button>');
+    }
+    if (tutorRef) {
+      const item = (dir.tutors || []).find(t => t.refCode === tutorRef);
+      if (item) return openModal('Shared Verified Tutor — ' + tutorRef, '<p class="help-text">Verified tutor profile shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'tutors'));
+      return openModal('Tutor Unavailable', '<p>This tutor profile (' + esc(tutorRef) + ') is currently unavailable.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'tutors\')">Browse Available Tutors</button>');
+    }
   }
-  if (tutorRef) {
-    const item = (dir.tutors || []).find(t => t.refCode === tutorRef);
-    if (item) return openModal('Shared Verified Tutor — ' + tutorRef, '<p class="help-text">Verified tutor profile shared with you on TutorSync:</p>' + renderDirCardHtml(item, 'tutors'));
-    return openModal('Tutor Unavailable', '<p>This tutor profile (' + esc(tutorRef) + ') is currently unavailable.</p><button class="btn btn-primary" onclick="App.openDirectoryModal(\'tutors\')">Browse Available Tutors</button>');
-  }
-}
 
   /* ========================================================================
-   * PUBLIC DIRECTORY (ANONYMIZED SEARCH & SCROLLABLE CARDS + MODAL)
+   * PUBLIC DIRECTORY (ANONYMIZED SEARCH, FILTER PILLS & VIRAL SHARE)
    * ======================================================================== */
   function filterDirectoryItems(tab, query, mode) {
     const q = (query || '').toLowerCase().trim();
@@ -734,65 +775,68 @@ async function handleDeepLink(qs) {
   }
 
   function renderDirCardHtml(item, tab) {
-  if (tab === 'tutors') {
-    const shareText = 'Verified Tutor on TutorSync (' + item.refCode + '): ' + (item.qualifications || 'Qualified Tutor') + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + '). View & Request free: ' + getShareBaseUrl() + '#/?tutor=' + encodeURIComponent(item.refCode);return `
+    if (tab === 'tutors') {
+      const shareText = 'Verified Tutor on TutorSync (' + item.refCode + '): ' + (item.qualifications || 'Qualified Tutor') + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Flexible') + '). Request free: ' + getShareBaseUrl() + '#/?tutor=' + encodeURIComponent(item.refCode);
+      return `
+        <div class="dir-card">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
+              <span class="badge badge-green">Verified Tutor</span>
+              <span class="badge badge-blue">${esc(item.teachingMode)}</span>
+            </div>
+            <h4 style="margin-bottom:0.2rem">${esc(item.qualifications || 'Qualified Educator')}</h4>
+            <div class="dir-meta">
+              <span><b>Ref:</b> ${esc(item.refCode)} · ${item.experienceYears} yrs exp.</span>
+              <span><b>Area:</b> ${esc(item.generalArea || 'Flexible')}</span>
+              <span><b>Expected Fee:</b> ${inr(item.expectedMonthlyFee)}/mo</span>
+            </div>
+            <div class="dir-tags">
+              ${(item.subjects || []).slice(0,4).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
+              ${(item.boardExpertise || []).map(b => `<span class="dir-tag">${esc(b)}</span>`).join('')}
+            </div>
+            ${item.shortBio ? `<p style="font-size:0.8rem;margin:0.35rem 0 0">${esc(item.shortBio)}</p>` : ''}
+          </div>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="App.requestMatchFromDir('${esc(item.refCode)}', ${esc(JSON.stringify(item.subjects||[]))})">Request Tutor</button>
+            <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText)}">Share</a>
+          </div>
+        </div>
+      `;
+    }
+    const shareText = 'Tuition Opening on TutorSync (' + item.refCode + '): ' + item.classGrade + ' ' + item.board + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Online') + ', Budget ₹' + item.budgetPerMonth + '/mo). Apply free: ' + getShareBaseUrl() + '#/?need=' + encodeURIComponent(item.refCode);
+    return `
       <div class="dir-card">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
-            <span class="badge badge-green">Verified Tutor</span>
-            <span class="badge badge-blue">${esc(item.teachingMode)}</span>
+            <span class="badge badge-blue">Verified Requirement</span>
+            <span class="badge">${esc(item.teachingMode)}</span>
           </div>
-          <h4 style="margin-bottom:0.2rem">${esc(item.qualifications || 'Qualified Educator')}</h4>
+          <h4 style="margin-bottom:0.2rem">${esc(item.classGrade)} · ${esc(item.board)}</h4>
           <div class="dir-meta">
-            <span><b>Ref:</b> ${esc(item.refCode)} · ${item.experienceYears} yrs exp.</span>
-            <span><b>Area:</b> ${esc(item.generalArea || 'Flexible')}</span>
-            <span><b>Expected Fee:</b> ${inr(item.expectedMonthlyFee)}/mo</span>
+            <span><b>Ref:</b> ${esc(item.refCode)}</span>
+            <span><b>Location:</b> ${esc(item.generalArea || 'Online')}</span>
+            <span><b>Schedule:</b> ${esc((item.preferredDays||[]).join(', '))} ${item.preferredTime ? '· ' + esc(item.preferredTime) : ''}</span>
+            <span><b>Budget:</b> ${inr(item.budgetPerMonth)}/mo</span>
           </div>
           <div class="dir-tags">
-            ${(item.subjects || []).slice(0,4).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
-            ${(item.boardExpertise || []).map(b => `<span class="dir-tag">${esc(b)}</span>`).join('')}
+            ${(item.subjects || []).slice(0,5).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
           </div>
-          ${item.shortBio ? `<p style="font-size:0.8rem;margin:0.35rem 0 0">${esc(item.shortBio)}</p>` : ''}
         </div>
         <div style="display:flex;gap:0.4rem">
-          <button class="btn btn-primary btn-sm" style="flex:1" onclick="App.requestMatchFromDir('${esc(item.refCode)}', ${esc(JSON.stringify(item.subjects||[]))})">Request Tutor</button>
+          <button class="btn btn-accent btn-sm" style="flex:1" onclick="App.applyTeachFromDir('${esc(item.refCode)}')">Apply to Teach</button>
           <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText)}">Share</a>
         </div>
       </div>
     `;
   }
-  const shareText = 'Tuition Opening on TutorSync (' + item.refCode + '): ' + item.classGrade + ' ' + item.board + ' · ' + (item.subjects || []).slice(0,3).join(', ') + ' (' + item.teachingMode + ', ' + (item.generalArea || 'Online') + ', Budget ₹' + item.budgetPerMonth + '/mo). Apply free: ' + getShareBaseUrl() + '#/?need=' + encodeURIComponent(item.refCode);return `
-    <div class="dir-card">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;margin-bottom:0.4rem">
-          <span class="badge badge-blue">Verified Requirement</span>
-          <span class="badge">${esc(item.teachingMode)}</span>
-        </div>
-        <h4 style="margin-bottom:0.2rem">${esc(item.classGrade)} · ${esc(item.board)}</h4>
-        <div class="dir-meta">
-          <span><b>Ref:</b> ${esc(item.refCode)}</span>
-          <span><b>Location:</b> ${esc(item.generalArea || 'Online')}</span>
-          <span><b>Schedule:</b> ${esc((item.preferredDays||[]).join(', '))} ${item.preferredTime ? '· ' + esc(item.preferredTime) : ''}</span>
-          <span><b>Budget:</b> ${inr(item.budgetPerMonth)}/mo</span>
-        </div>
-        <div class="dir-tags">
-          ${(item.subjects || []).slice(0,5).map(s => `<span class="dir-tag">${esc(s)}</span>`).join('')}
-        </div>
-      </div>
-      <div style="display:flex;gap:0.4rem">
-        <button class="btn btn-accent btn-sm" style="flex:1" onclick="App.applyTeachFromDir('${esc(item.refCode)}')">Apply to Teach</button>
-        <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText)}">Share</a>
-      </div>
-    </div>
-  `;
-}
+
   function renderDirectoryStrip() {
     const track = document.getElementById('dir-scroll-track');
     if (!track) return;
     const bt = document.getElementById('dir-tab-tutors');
-const bs = document.getElementById('dir-tab-students');
-if (bt && state.publicDirectory.loaded) bt.textContent = 'Verified Tutors Available (' + state.publicDirectory.tutors.length + ')';
-if (bs && state.publicDirectory.loaded) bs.textContent = 'Students Looking for Tutors (' + state.publicDirectory.students.length + ')';
+    const bs = document.getElementById('dir-tab-students');
+    if (bt && state.publicDirectory.loaded) bt.textContent = 'Verified Tutors Available (' + state.publicDirectory.tutors.length + ')';
+    if (bs && state.publicDirectory.loaded) bs.textContent = 'Students Looking for Tutors (' + state.publicDirectory.students.length + ')';
     const filtered = filterDirectoryItems(state.dirTab, state.dirQuery, state.dirMode);
     if (!state.publicDirectory.loaded) {
       track.innerHTML = `<div class="card" style="width:100%"><p style="margin:0">Loading verified tutors and tuition needs...</p></div>`;
@@ -809,42 +853,82 @@ if (bs && state.publicDirectory.loaded) bs.textContent = 'Students Looking for T
   }
 
   function applyQuickFilter(tag, btnEl) {
-  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-  if (btnEl) btnEl.classList.add('active');
-  if (tag === 'All') { state.dirQuery = ''; state.dirMode = ''; }
-  else if (tag === 'Online' || tag === 'Offline') { state.dirMode = tag.toUpperCase(); state.dirQuery = ''; }
-  else { state.dirQuery = tag; state.dirMode = ''; }
-  const qEl = document.getElementById('dir-q'); if (qEl) qEl.value = state.dirQuery;
-  const mEl = document.getElementById('dir-mode'); if (mEl) mEl.value = state.dirMode;
-  renderDirectoryStrip();
-}
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    if (tag === 'All') { state.dirQuery = ''; state.dirMode = ''; }
+    else if (tag === 'Online' || tag === 'Offline') { state.dirMode = tag.toUpperCase(); state.dirQuery = ''; }
+    else { state.dirQuery = tag; state.dirMode = ''; }
+    const qEl = document.getElementById('dir-q'); if (qEl) qEl.value = state.dirQuery;
+    const mEl = document.getElementById('dir-mode'); if (mEl) mEl.value = state.dirMode;
+    renderDirectoryStrip();
+  }
 
-async function runHeroQuickCheck() {
-  await loadPublicDirectory(false);
-  const role = document.getElementById('hq-role').value;
-  const sub = document.getElementById('hq-sub').value.trim();
-  const mode = document.getElementById('hq-mode').value;
-  state.dirTab = role;
-  state.dirQuery = sub;
-  state.dirMode = mode;
-  const matches = filterDirectoryItems(role, sub, mode);
-  const box = document.getElementById('hq-result');
-  box.classList.remove('hidden');
-  const targetRoute = role === 'tutors' ? '#/register-student' : '#/register-tutor';
-  box.innerHTML = matches.length
-    ? `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.55rem 0.75rem;background:var(--success-bg);border-radius:8px;color:#166534">
-         <span><b>${matches.length} live verified match(es)</b> found right now!</span>
-         <span style="display:flex;gap:0.4rem">
-           <button type="button" class="btn btn-primary btn-sm" onclick="App.openDirectoryModal('${role}')">View Matches</button>
-           <button type="button" class="btn btn-outline btn-sm" onclick="App.navigate('${targetRoute}')">Register Free</button>
-         </span>
-       </div>`
-    : `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.55rem 0.75rem;background:var(--accent-light);border-radius:8px;color:#075985">
-         <span>No exact public match listed yet—register free and our Autopilot engine will match &amp; notify you first!</span>
-         <button type="button" class="btn btn-primary btn-sm" onclick="App.navigate('${targetRoute}')">Register Free</button>
-       </div>`;
-  setDirTab(role, false);
-}
+  async function runHeroQuickCheck() {
+    await loadPublicDirectory(false);
+    const role = document.getElementById('hq-role').value;
+    const cls = document.getElementById('hq-cls').value;
+    const sub = document.getElementById('hq-sub').value.trim();
+    const pinOrMode = document.getElementById('hq-pin').value.trim();
+
+    let modeFilter = '', queryFilter = [sub, cls].filter(Boolean).join(' ').trim();
+    if (pinOrMode.toUpperCase() === 'ONLINE') modeFilter = 'ONLINE';
+    else if (/^\d{6}$/.test(pinOrMode)) queryFilter = (queryFilter ? queryFilter + ' ' : '') + pinOrMode;
+
+    state.dirTab = role;
+    state.dirQuery = sub || cls || (/^\d{6}$/.test(pinOrMode) ? pinOrMode : '');
+    state.dirMode = modeFilter;
+
+    // Also match strictly or loosely for helpful user count
+    const list = role === 'tutors' ? state.publicDirectory.tutors : state.publicDirectory.students;
+    const matches = list.filter(it => {
+      if (modeFilter && String(it.teachingMode).toUpperCase() !== modeFilter) return false;
+      const hay = [it.classGrade, it.board, it.generalArea, it.qualifications, (it.subjects||[]).join(' '), (it.classesGrades||[]).join(' ')].join(' ').toLowerCase();
+      if (sub && hay.indexOf(sub.toLowerCase()) === -1) return false;
+      if (/^\d{6}$/.test(pinOrMode) && hay.indexOf(pinOrMode) === -1 && String(it.teachingMode) !== 'ONLINE') return false;
+      return true;
+    });
+
+    const box = document.getElementById('hq-result');
+    box.classList.remove('hidden');
+    const feeArr = matches.map(m => role === 'tutors' ? m.expectedMonthlyFee : m.budgetPerMonth).filter(n => n > 0);
+    const feeText = feeArr.length ? (' · Range: ' + inr(Math.min.apply(null, feeArr)) + '–' + inr(Math.max.apply(null, feeArr)) + '/mo') : '';
+
+    box.innerHTML = matches.length
+      ? `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.65rem 0.85rem;background:var(--success-bg);border-radius:8px;color:#166534">
+           <span><b>${matches.length} live verified match(es)</b> found${feeText}!</span>
+           <span style="display:flex;gap:0.4rem">
+             <button type="button" class="btn btn-primary btn-sm" onclick="App.openDirectoryModal('${role}')">View Cards</button>
+             <button type="button" class="btn btn-outline btn-sm" onclick="App.openPrefilledReg('${role}')">Unlock Match Free</button>
+           </span>
+         </div>`
+      : `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.65rem 0.85rem;background:var(--accent-light);border-radius:8px;color:#075985">
+           <span>No exact public match listed yet—register free with your preferences and our Autopilot engine notifies verified matches immediately!</span>
+           <button type="button" class="btn btn-primary btn-sm" onclick="App.openPrefilledReg('${role}')">Register Pre-Filled Free</button>
+         </div>`;
+
+    const qEl = document.getElementById('dir-q'); if (qEl) qEl.value = state.dirQuery;
+    const mEl = document.getElementById('dir-mode'); if (mEl) mEl.value = state.dirMode;
+    setDirTab(role, false);
+  }
+
+  function openPrefilledReg(role) {
+    const cls = document.getElementById('hq-cls') ? document.getElementById('hq-cls').value : '';
+    const sub = document.getElementById('hq-sub') ? document.getElementById('hq-sub').value.trim() : '';
+    const pinOrMode = document.getElementById('hq-pin') ? document.getElementById('hq-pin').value.trim() : '';
+    const matchedSub = state.publicConfig.subjects.filter(s => sub && s.toLowerCase().indexOf(sub.toLowerCase()) !== -1);
+    if (role === 'tutors') {
+      state.prefillStudent = {
+        classGrade: cls,
+        subjects: matchedSub,
+        pinCode: /^\d{6}$/.test(pinOrMode) ? pinOrMode : '',
+        mode: pinOrMode.toUpperCase() === 'ONLINE' ? 'ONLINE' : ''
+      };
+      navigate('#/register-student');
+    } else {
+      state.prefillTutor = { subjects: matchedSub, pinCode: /^\d{6}$/.test(pinOrMode) ? pinOrMode : '' };
+      navigate('#/register-tutor');
+    }
+  }
 
   function setDirTab(tab, inModal) {
     state.dirTab = tab;
@@ -928,6 +1012,70 @@ async function runHeroQuickCheck() {
   }
 
   /* ========================================================================
+   * INTERACTIVE SAMPLE PORTAL PREVIEW SWITCHER (HONEST ILLUSTRATIVE UI)
+   * ======================================================================== */
+  function setPortalPreview(tab) {
+    state.portalPreviewTab = tab;
+    const bp = document.getElementById('pv-btn-parent');
+    const bt = document.getElementById('pv-btn-tutor');
+    if (bp && bt) {
+      bp.className = 'btn btn-sm ' + (tab === 'parent' ? 'btn-accent' : 'btn-outline');
+      bt.className = 'btn btn-sm ' + (tab === 'tutor' ? 'btn-accent' : 'btn-outline');
+    }
+    const box = document.getElementById('pv-content');
+    if (!box) return;
+    if (tab === 'parent') {
+      box.innerHTML = `
+        <div class="grid-2">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+              <b>Sample Assignment · Mathematics &amp; Physics</b><span class="badge badge-green">ACTIVE</span>
+            </div>
+            <p style="font-size:0.84rem;margin-bottom:0.5rem">Agreed Fee: <b>₹5,000/month</b> · 3 sessions/week · 1-Hr Trial Completed</p>
+            <div style="background:var(--surface);padding:0.65rem;border-radius:8px;font-size:0.82rem">
+              <div>&#10003; Mon 5:00 PM — Chapter 3 Vectors (Confirmed)</div>
+              <div>&#10003; Wed 5:00 PM — Kinematics Numericals (Confirmed)</div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+              <b>Sample Monthly Invoice · TS-INV-001</b><span class="badge badge-blue">UPI READY</span>
+            </div>
+            <p style="font-size:0.84rem;margin-bottom:0.55rem">Amount Due: <b>₹5,000</b> · Pay via UPI QR &amp; submit your 12-digit UTR for instant receipt generation.</p>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              <span class="badge badge-green">PDF Invoice in Drive</span>
+              <span class="badge badge-blue">Official Receipt After UTR Verify</span>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      box.innerHTML = `
+        <div class="grid-2">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+              <b>Sample Open Lead · Class 11 CBSE</b><span class="badge badge-blue">92% FIT</span>
+            </div>
+            <p style="font-size:0.84rem;margin-bottom:0.5rem">Subjects: <b>Mathematics, Physics</b> · PIN 700084 · Budget: <b>₹5,000/mo</b></p>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              <span class="badge badge-green">Zero Lead Fee</span>
+              <span class="badge">1-Click Express Interest</span>
+            </div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+              <b>Sample Tutor Earnings Breakdown</b><span class="badge badge-green">TRANSPARENT</span>
+            </div>
+            <p style="font-size:0.84rem;margin-bottom:0.5rem">Collected Tuition: <b>₹5,000</b> &minus; 10% Platform Commission (<b>₹500</b>) = <b>₹4,500 Net Payout</b></p>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              <span class="badge badge-blue">Saved UPI Payout Profile</span>
+              <span class="badge">Downloadable CSV &amp; PDF Statement</span>
+            </div>
+          </div>
+        </div>`;
+    }
+  }
+
+  /* ========================================================================
    * PUBLIC LANDING PAGE & FOOTER
    * ======================================================================== */
   function getEduSlides() {
@@ -977,21 +1125,24 @@ async function runHeroQuickCheck() {
               <button class="btn btn-outline" onclick="App.openDirectoryModal('tutors')">${EDU_ICONS.search} Browse Tutors &amp; Needs</button>
             </div>
             <div class="quick-check-box">
-  <div style="font-size:0.82rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem">Instant Availability Check (Live)</div>
-  <div class="quick-check-row">
-    <div class="form-group"><label style="font-size:0.75rem">Looking For</label>
-      <select id="hq-role"><option value="tutors">Find a Tutor</option><option value="students">Find Students (Tutor)</option></select>
-    </div>
-    <div class="form-group"><label style="font-size:0.75rem">Subject / Keyword</label>
-      <input id="hq-sub" placeholder="e.g., Math, Physics, CBSE" />
-    </div>
-    <div class="form-group"><label style="font-size:0.75rem">Mode</label>
-      <select id="hq-mode"><option value="">Any Mode</option><option value="OFFLINE">Home (Offline)</option><option value="ONLINE">Online</option><option value="HYBRID">Hybrid</option></select>
-    </div>
-    <button type="button" class="btn btn-primary btn-sm" style="height:38px" onclick="App.runHeroQuickCheck()">Check Live</button>
-  </div>
-  <div id="hq-result" class="hidden" style="margin-top:0.65rem;font-size:0.85rem"></div>
-</div>
+              <div style="font-size:0.82rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem">Instant Availability &amp; Fee Check (Live)</div>
+              <div class="quick-check-row">
+                <div class="form-group"><label style="font-size:0.74rem">I Want To</label>
+                  <select id="hq-role"><option value="tutors">Find a Tutor</option><option value="students">Find Students</option></select>
+                </div>
+                <div class="form-group"><label style="font-size:0.74rem">Class / Exam</label>
+                  <select id="hq-cls"><option value="">Any Class</option>${cfg.classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select>
+                </div>
+                <div class="form-group"><label style="font-size:0.74rem">Subject</label>
+                  <input id="hq-sub" placeholder="e.g. Math, Physics" />
+                </div>
+                <div class="form-group"><label style="font-size:0.74rem">PIN or "Online"</label>
+                  <input id="hq-pin" placeholder="700084 / Online" />
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" style="height:38px" onclick="App.runHeroQuickCheck()">Check Live</button>
+              </div>
+              <div id="hq-result" class="hidden" style="margin-top:0.65rem;font-size:0.85rem"></div>
+            </div>
             <div class="einstein-quote">
               <div style="flex-shrink:0">${EDU_ICONS.einsteinBadge}</div>
               <div>
@@ -1011,13 +1162,13 @@ async function runHeroQuickCheck() {
       </section>
 
       <!-- LIVE PRIVACY-SAFE SEARCHABLE DIRECTORY -->
-      <section class="section section-alt" id="live-directory">
+      <section class="section section-alt reveal" id="live-directory">
         <div class="container">
           <div class="gallery-header">
             <div>
-            <span class="live-pill"><span class="live-dot"></span> LIVE DIRECTORY</span>
+              <span class="live-pill"><span class="live-dot"></span> LIVE DIRECTORY</span>
               <h2 style="margin-bottom:0.25rem">Live Verified Tutors &amp; Tuition Needs</h2>
-              <p style="margin:0">Search or scroll verified openings. Personal contact info stays protected until matched.</p>
+              <p style="margin:0">Search, filter, or share verified openings on WhatsApp. Personal contact info stays protected until matched.</p>
             </div>
             <div class="gallery-controls">
               <button type="button" class="btn btn-outline btn-sm" onclick="App.openDirectoryModal(App.getDirTab())">${EDU_ICONS.search} Open Full Search Modal</button>
@@ -1025,7 +1176,7 @@ async function runHeroQuickCheck() {
               <button type="button" class="btn btn-outline btn-sm" onclick="App.scrollTrack('dir-scroll-track', 1)" aria-label="Scroll right">&rarr;</button>
             </div>
           </div>
-          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;margin-bottom:0.85rem">
             <button id="dir-tab-tutors" class="btn btn-sm ${state.dirTab==='tutors'?'btn-primary':'btn-outline'}" onclick="App.setDirTab('tutors',false)">Verified Tutors Available</button>
             <button id="dir-tab-students" class="btn btn-sm ${state.dirTab==='students'?'btn-primary':'btn-outline'}" onclick="App.setDirTab('students',false)">Students Looking for Tutors</button>
             <input id="dir-q" type="search" value="${esc(state.dirQuery)}" placeholder="Search subject, class, board, PIN, area..." style="flex:1;min-width:210px" oninput="App.onDirFilterChange(false)" />
@@ -1037,15 +1188,35 @@ async function runHeroQuickCheck() {
             </select>
           </div>
           <div class="filter-pills">
-  ${['All','Mathematics','Physics','Science','English','CBSE','ICSE','Online','Offline'].map(tag =>
-    `<button type="button" class="filter-pill ${tag==='All'&&!state.dirQuery&&!state.dirMode?'active':''}" onclick="App.applyQuickFilter('${tag}', this)">${tag}</button>`
-  ).join('')}
-</div>
+            ${['All','Class 10','Class 11','Class 12','JEE / NEET','Mathematics','Physics','Science','English','CBSE','ICSE','Online','Offline'].map(tag =>
+              `<button type="button" class="filter-pill ${tag==='All'&&!state.dirQuery&&!state.dirMode?'active':''}" onclick="App.applyQuickFilter('${tag}', this)">${tag}</button>`
+            ).join('')}
+          </div>
           <div class="scroll-track" id="dir-scroll-track"></div>
         </div>
       </section>
 
-      <section class="section" id="learning-showcase">
+      <!-- INTERACTIVE SAMPLE PORTAL PREVIEW -->
+      <section class="section reveal" id="portal-preview">
+        <div class="container">
+          <div class="section-head">
+            <h2>Inside the TutorSync Portal</h2>
+            <p>Preview how parents and tutors track attendance, UPI invoices, and transparent commission payouts.</p>
+          </div>
+          <div class="preview-shell">
+            <div class="preview-bar">
+              <span style="font-size:0.84rem;font-weight:700">Sample Portal Interface (Illustrative Preview)</span>
+              <div style="display:flex;gap:0.4rem">
+                <button id="pv-btn-parent" class="btn btn-sm ${state.portalPreviewTab==='parent'?'btn-accent':'btn-outline'}" onclick="App.setPortalPreview('parent')">See Parent View</button>
+                <button id="pv-btn-tutor" class="btn btn-sm ${state.portalPreviewTab==='tutor'?'btn-accent':'btn-outline'}" onclick="App.setPortalPreview('tutor')">See Tutor View</button>
+              </div>
+            </div>
+            <div class="preview-body" id="pv-content"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-alt reveal" id="learning-showcase">
         <div class="container">
           <div class="gallery-header">
             <div>
@@ -1068,29 +1239,29 @@ async function runHeroQuickCheck() {
         </div>
       </section>
 
-      <section class="section section-alt" id="how-it-works">
+      <section class="section reveal" id="how-it-works">
         <div class="container">
           <div class="section-head">
             <h2>How TutorSync Works</h2>
             <p>An automated yet personally supervised workflow designed for speed, safety, and clarity.</p>
           </div>
           <div class="grid-4">
-            <div class="card"><div class="step-row"><span class="step-num">1</span><span class="icon-badge" style="margin:0">${EDU_ICONS.book}</span></div><h3>Register Free</h3><p>Students enter board, class, subjects, PIN code, and budget. Tutors enter qualifications, expertise, and preferred timing.</p></div>
-            <div class="card"><div class="step-row"><span class="step-num">2</span><span class="icon-badge" style="margin:0">${EDU_ICONS.shield}</span></div><h3>Quality Verification</h3><p>Requirements and tutor credentials pass our verification gate before any contact details are exchanged.</p></div>
-            <div class="card"><div class="step-row"><span class="step-num">3</span><span class="icon-badge" style="margin:0">${EDU_ICONS.atom}</span></div><h3>Smart Match &amp; Trial</h3><p>Compatible verified tutors receive instant match alerts; interested candidates are proposed with an optional 1-hour trial class.</p></div>
-            <div class="card"><div class="step-row"><span class="step-num">4</span><span class="icon-badge" style="margin:0">${EDU_ICONS.compass}</span></div><h3>Managed Tuition</h3><p>Automated schedules, attendance confirmation, scannable UPI invoices, and reconciled tutor payouts in one portal.</p></div>
+            <div class="card hover-lift"><div class="step-row"><span class="step-num">1</span><span class="icon-badge" style="margin:0">${EDU_ICONS.book}</span></div><h3>Register Free</h3><p>Students enter board, class, subjects, PIN code, and budget. Tutors enter qualifications, expertise, and preferred timing.</p></div>
+            <div class="card hover-lift"><div class="step-row"><span class="step-num">2</span><span class="icon-badge" style="margin:0">${EDU_ICONS.shield}</span></div><h3>Quality Verification</h3><p>Requirements and tutor credentials pass our verification gate before any contact details are exchanged.</p></div>
+            <div class="card hover-lift"><div class="step-row"><span class="step-num">3</span><span class="icon-badge" style="margin:0">${EDU_ICONS.atom}</span></div><h3>Smart Match &amp; Trial</h3><p>Compatible verified tutors receive instant match alerts; interested candidates are proposed with an optional 1-hour trial class.</p></div>
+            <div class="card hover-lift"><div class="step-row"><span class="step-num">4</span><span class="icon-badge" style="margin:0">${EDU_ICONS.compass}</span></div><h3>Managed Tuition</h3><p>Automated schedules, attendance confirmation, scannable UPI invoices, and reconciled tutor payouts in one portal.</p></div>
           </div>
         </div>
       </section>
 
-      <section class="section" id="benefits">
+      <section class="section section-alt reveal" id="benefits">
         <div class="container">
           <div class="section-head">
             <h2>Designed for Indian Families &amp; Educators</h2>
             <p>Accountability, fee clarity, and structured coordination without unmoderated marketplace spam.</p>
           </div>
           <div class="grid-2">
-            <div class="card">
+            <div class="card hover-lift">
               <div class="icon-badge">${EDU_ICONS.cap}</div>
               <h3>Benefits for Students &amp; Parents</h3>
               <ul style="padding-left:1.2rem;color:var(--text-muted);margin:0.75rem 0 0">
@@ -1101,7 +1272,7 @@ async function runHeroQuickCheck() {
                 <li><b>Ongoing Support:</b> Direct escalation channel for rescheduling or quality issues.</li>
               </ul>
             </div>
-            <div class="card">
+            <div class="card hover-lift">
               <div class="icon-badge">${EDU_ICONS.atom}</div>
               <h3>Benefits for Tutors</h3>
               <ul style="padding-left:1.2rem;color:var(--text-muted);margin:0.75rem 0 0">
@@ -1116,21 +1287,21 @@ async function runHeroQuickCheck() {
         </div>
       </section>
 
-      <section class="section section-alt" id="managed-process">
+      <section class="section reveal" id="managed-process">
         <div class="container">
           <div class="section-head">
             <h2>Our Managed Tuition &amp; Financial Governance</h2>
             <p>Built on transparent agreements and verifiable records—zero hidden fees or fabricated claims.</p>
           </div>
           <div class="grid-3">
-            <div class="card"><div class="icon-badge">${EDU_ICONS.shield}</div><h4>Dual Confirmation</h4><p>Assignments activate only after both parent/student and tutor confirm subjects, schedule, and monthly tuition fee.</p></div>
-            <div class="card"><div class="icon-badge">${EDU_ICONS.book}</div><h4>UPI QR &amp; UTR Verification</h4><p>Monthly invoices carry your unique reference and UPI QR. Students submit their UTR and receive reconciled receipts.</p></div>
-            <div class="card"><div class="icon-badge">${EDU_ICONS.compass}</div><h4>Honest Standards</h4><p>No fake testimonials, no inflated student numbers, and clear legal transparency: TutorSync is a managed coordinator, not an escrow bank.</p></div>
+            <div class="card hover-lift"><div class="icon-badge">${EDU_ICONS.shield}</div><h4>Dual Confirmation</h4><p>Assignments activate only after both parent/student and tutor confirm subjects, schedule, and monthly tuition fee.</p></div>
+            <div class="card hover-lift"><div class="icon-badge">${EDU_ICONS.book}</div><h4>UPI QR &amp; UTR Verification</h4><p>Monthly invoices carry your unique reference and UPI QR. Students submit their UTR and receive reconciled receipts.</p></div>
+            <div class="card hover-lift"><div class="icon-badge">${EDU_ICONS.compass}</div><h4>Honest Standards</h4><p>No fake testimonials, no inflated student numbers, and clear legal transparency: TutorSync is a managed coordinator, not an escrow bank.</p></div>
           </div>
         </div>
       </section>
 
-      <section class="section" id="faq">
+      <section class="section section-alt reveal" id="faq">
         <div class="container" style="max-width:780px">
           <div class="section-head"><h2>Frequently Asked Questions</h2></div>
           ${renderFaqItem('Is registration really free for students and tutors?', 'Yes. Joining TutorSync as a student/parent or as a tutor has zero registration, listing, or subscription charges.')}
@@ -1141,7 +1312,7 @@ async function runHeroQuickCheck() {
         </div>
       </section>
 
-      <section class="section section-alt" id="contact">
+      <section class="section reveal" id="contact">
         <div class="container" style="max-width:680px">
           <div class="section-head">
             <h2>Contact &amp; Support</h2>
@@ -1203,8 +1374,10 @@ async function runHeroQuickCheck() {
         </div>
       </footer>
     `;
+    setPortalPreview(state.portalPreviewTab || 'parent');
     renderDirectoryStrip();
     loadPublicDirectory(false);
+    initScrollReveal();
   }
 
   function renderFaqItem(q, a) {
@@ -1256,7 +1429,7 @@ async function runHeroQuickCheck() {
   }
 
   /* ========================================================================
-   * PUBLIC REGISTRATION FORMS WITH INDIA PIN AUTO-LOOKUP
+   * PUBLIC REGISTRATION FORMS (PIN AUTO-LOOKUP + REFERRAL LOOP)
    * ======================================================================== */
   function renderMultiChips(groupName, items, prechecked) {
     const pre = prechecked || [];
@@ -1290,6 +1463,7 @@ async function runHeroQuickCheck() {
     const cfg = state.publicConfig;
     const pre = state.prefillStudent || {};
     state.prefillStudent = null;
+    const selMode = pre.mode || 'OFFLINE';
     document.getElementById('app-root').innerHTML = `
       <section class="section"><div class="container" style="max-width:740px">
         <button class="btn btn-outline btn-sm" onclick="App.navigate('#/')" style="margin-bottom:1rem">&larr; Back</button>
@@ -1306,7 +1480,7 @@ async function runHeroQuickCheck() {
               <div class="form-group"><label class="req">Indian Mobile (10-digit)</label><input id="sr-phone" type="tel" pattern="[6-9][0-9]{9}" maxlength="10" required placeholder="9876543210" /></div>
               <div class="form-group"><label class="req">WhatsApp Number</label><input id="sr-wa" type="tel" pattern="[6-9][0-9]{9}" maxlength="10" required placeholder="10-digit WhatsApp" /></div>
               <div class="form-group"><label class="req">Class / Category</label>
-                <select id="sr-class" required><option value="">Select Class</option>${cfg.classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select>
+                <select id="sr-class" required><option value="">Select Class</option>${cfg.classes.map(c => `<option value="${esc(c)}" ${pre.classGrade===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
               </div>
               <div class="form-group"><label class="req">Education Board</label>
                 <select id="sr-board" required onchange="document.getElementById('sr-board-other-wrap').classList.toggle('hidden', this.value!=='OTHER')">
@@ -1317,22 +1491,23 @@ async function runHeroQuickCheck() {
               <div class="form-group full"><label class="req">Subjects Required</label><div class="chip-group">${renderMultiChips('sr-sub', cfg.subjects, pre.subjects)}</div></div>
               <div class="form-group"><label class="req">Preferred Teaching Mode</label>
                 <select id="sr-mode" required onchange="App.toggleStudentLocationFields()">
-                  <option value="OFFLINE">Offline (Home / In-Person)</option>
-                  <option value="ONLINE">Online</option>
-                  <option value="HYBRID">Hybrid</option>
+                  <option value="OFFLINE" ${selMode==='OFFLINE'?'selected':''}>Offline (Home / In-Person)</option>
+                  <option value="ONLINE" ${selMode==='ONLINE'?'selected':''}>Online</option>
+                  <option value="HYBRID" ${selMode==='HYBRID'?'selected':''}>Hybrid</option>
                 </select>
               </div>
               <div class="form-group"><label>Preferred Tutor Gender (Optional)</label>
                 <select id="sr-gender"><option value="ANY">No Preference</option><option value="FEMALE">Female</option><option value="MALE">Male</option></select>
               </div>
-              <div class="form-group" id="sr-pin-wrap"><label class="req">6-Digit PIN Code</label><input id="sr-pin" maxlength="6" placeholder="e.g., 700084" oninput="App.lookupIndiaPin('sr-pin','sr-area','sr-pin-hint')" /><span class="help-text" id="sr-pin-hint"></span></div>
-              <div class="form-group" id="sr-loc-wrap"><label class="req">Area / Locality / City</label><input id="sr-area" placeholder="Auto-detects from PIN or enter locality" /></div>
+              <div class="form-group ${selMode==='ONLINE'?'hidden':''}" id="sr-pin-wrap"><label class="req">6-Digit PIN Code</label><input id="sr-pin" maxlength="6" value="${esc(pre.pinCode||'')}" placeholder="e.g., 700084" oninput="App.lookupIndiaPin('sr-pin','sr-area','sr-pin-hint')" /><span class="help-text" id="sr-pin-hint"></span></div>
+              <div class="form-group ${selMode==='ONLINE'?'hidden':''}" id="sr-loc-wrap"><label class="req">Area / Locality / City</label><input id="sr-area" placeholder="Auto-detects from PIN or enter locality" /></div>
               <div class="form-group full"><label class="req">Preferred Tuition Days</label>
                 <div class="chip-group">${renderMultiChips('sr-days', ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])}</div>
               </div>
               <div class="form-group"><label class="req">Preferred Time Window</label><input id="sr-time" required placeholder="e.g., 5:00 PM - 7:30 PM" /></div>
               <div class="form-group"><label class="req">Monthly Budget (INR ₹)</label><input id="sr-budget" type="number" min="500" required placeholder="e.g., 4000" /></div>
               <div class="form-group"><label>Preferred Start Date</label><input id="sr-start" type="date" /></div>
+              <div class="form-group"><label>Referred By (Phone or ID — Optional)</label><input id="sr-ref" value="${esc(state.referralCode)}" placeholder="e.g., TUT-2026-0001 or friend phone" /></div>
               <div class="form-group full"><label>Additional Requirements (Optional)</label><textarea id="sr-notes" rows="2" placeholder="Exam goals, language preference, trial class request, etc.">${esc(pre.note || '')}</textarea></div>
               <div class="form-group full">
                 <label class="chip-label" style="border:none;background:none;padding:0">
@@ -1346,6 +1521,7 @@ async function runHeroQuickCheck() {
         </div>
       </div></section>
     `;
+    if (pre.pinCode) lookupIndiaPin('sr-pin', 'sr-area', 'sr-pin-hint');
   }
 
   function toggleStudentLocationFields() {
@@ -1360,6 +1536,9 @@ async function runHeroQuickCheck() {
     const days = getCheckedValues('sr-days');
     if (subs.length === 0) return toast('Please select at least one subject.', 'error');
     if (days.length === 0) return toast('Please select preferred tuition days.', 'error');
+    const refVal = document.getElementById('sr-ref').value.trim();
+    const baseNotes = document.getElementById('sr-notes').value.trim();
+    const combinedNotes = (refVal ? '[Referred By: ' + refVal + '] ' : '') + baseNotes;
     try {
       const res = await apiCall('publicRegisterStudent', {
         websiteTrap: document.getElementById('sr-trap').value,
@@ -1379,16 +1558,20 @@ async function runHeroQuickCheck() {
         preferredTime: document.getElementById('sr-time').value,
         budgetPerMonth: document.getElementById('sr-budget').value,
         preferredStartDate: document.getElementById('sr-start').value,
-        additionalNotes: document.getElementById('sr-notes').value,
+        additionalNotes: combinedNotes,
         consentAccepted: document.getElementById('sr-consent').checked
       });
+      const myShareUrl = getShareBaseUrl() + '#/?ref=' + encodeURIComponent(res.studentId);
       document.getElementById('stu-reg-card').innerHTML = `
         <div style="text-align:center;padding:1.5rem 0">
           <span class="badge badge-green">Registration Confirmed</span>
           <h2 style="margin-top:0.75rem">Student ID: ${esc(res.studentId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. A confirmation email has been sent. Once verified, you will receive your portal activation code and curated tutor matches.</p>
-          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: ' + getShareBaseUrl())}">Share in Parent Group</a>
-          <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
+          <p style="font-size:0.84rem">Know another parent looking for a tutor? Share your invite link in your school or apartment WhatsApp group:</p>
+          <div style="display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap">
+            <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: ' + myShareUrl)}">Share in Parent Group</a>
+            <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
+          </div>
         </div>`;
     } catch (err) {}
   }
@@ -1417,7 +1600,7 @@ async function runHeroQuickCheck() {
               </div>
               <div class="form-group"><label class="req">Teaching Experience (Years)</label><input id="tr-exp" type="number" min="0" step="0.5" required /></div>
               <div class="form-group full"><label class="req">Qualifications &amp; Degrees</label><input id="tr-qual" required placeholder="e.g., M.Sc. Physics, B.Ed., IIT/NIT/CU" /></div>
-              <div class="form-group full"><label class="req">Subjects You Teach</label><div class="chip-group">${renderMultiChips('tr-sub', cfg.subjects)}</div></div>
+              <div class="form-group full"><label class="req">Subjects You Teach</label><div class="chip-group">${renderMultiChips('tr-sub', cfg.subjects, pre.subjects)}</div></div>
               <div class="form-group full"><label class="req">Classes / Categories Taught</label><div class="chip-group">${renderMultiChips('tr-cls', cfg.classes)}</div></div>
               <div class="form-group full"><label class="req">Board Expertise</label><div class="chip-group">${renderMultiChips('tr-brd', cfg.boards)}</div></div>
               <div class="form-group"><label class="req">Teaching Mode</label>
@@ -1429,7 +1612,7 @@ async function runHeroQuickCheck() {
               </div>
               <div class="form-group"><label class="req">Expected Monthly Fee (INR ₹)</label><input id="tr-fee" type="number" min="500" required placeholder="e.g., 4500" /></div>
               <div class="form-group" id="tr-loc-wrap"><label class="req">Preferred Areas / Cities</label><input id="tr-locs" placeholder="e.g., Garia, Ballygunge, Salt Lake" /></div>
-              <div class="form-group" id="tr-pin-wrap"><label class="req">Serviceable PIN Codes (comma-separated)</label><input id="tr-pins" placeholder="700084, 700019" /></div>
+              <div class="form-group" id="tr-pin-wrap"><label class="req">Serviceable PIN Codes (comma-separated)</label><input id="tr-pins" value="${esc(pre.pinCode||'')}" placeholder="700084, 700019" /></div>
               <div class="form-group"><label>Max Travel Distance (km)</label><input id="tr-dist" type="number" min="0" value="5" /></div>
               <div class="form-group"><label>Students Currently Teaching</label><input id="tr-cur" type="number" min="0" value="0" /></div>
               <div class="form-group full"><label class="req">Availability Days</label><div class="chip-group">${renderMultiChips('tr-days', ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])}</div></div>
@@ -1437,8 +1620,9 @@ async function runHeroQuickCheck() {
               <div class="form-group"><label class="req">Languages Spoken (comma-separated)</label><input id="tr-lang" required placeholder="English, Bengali, Hindi" /></div>
               <div class="form-group full"><label class="req">Short Teaching Introduction</label><textarea id="tr-bio" rows="3" required placeholder="Describe your teaching methodology and strengths.">${esc(pre.note ? pre.note + ' — ' : '')}</textarea></div>
               <div class="form-group"><label>UPI ID for Payouts (Optional)</label><input id="tr-upi" placeholder="e.g., name@okaxis (can add later)" /></div>
+              <div class="form-group"><label>Referred By (Phone or ID — Optional)</label><input id="tr-ref" value="${esc(state.referralCode)}" placeholder="e.g., TUT-2026-0001" /></div>
               <div class="form-group"><label>Credential Document URL (Optional)</label><input id="tr-doc-url" type="url" placeholder="Google Drive / LinkedIn link" /></div>
-              <div class="form-group full"><label>Or Upload Credential PDF/Image (&le; 1.5 MB)</label><input id="tr-doc-file" type="file" accept=".pdf,.jpg,.jpeg,.png" /></div>
+              <div class="form-group"><label>Or Upload Credential PDF/Image (&le; 1.5 MB)</label><input id="tr-doc-file" type="file" accept=".pdf,.jpg,.jpeg,.png" /></div>
               <div class="form-group full">
                 <label class="chip-label" style="border:none;background:none;padding:0">
                   <input type="checkbox" id="tr-consent" required />
@@ -1479,6 +1663,9 @@ async function runHeroQuickCheck() {
       if (f.size > 1550000) return toast('File size must be under 1.5 MB.', 'error');
       docB64 = await readFileAsBase64(f); docName = f.name; docMime = f.type;
     }
+    const refVal = document.getElementById('tr-ref').value.trim();
+    const bioVal = document.getElementById('tr-bio').value.trim();
+    const combinedBio = (refVal ? '[Referred By: ' + refVal + '] ' : '') + bioVal;
     try {
       const res = await apiCall('publicRegisterTutor', {
         websiteTrap: document.getElementById('tr-trap').value,
@@ -1490,18 +1677,22 @@ async function runHeroQuickCheck() {
         preferredLocations: document.getElementById('tr-locs').value, pinCodes: document.getElementById('tr-pins').value,
         maxTravelDistanceKm: document.getElementById('tr-dist').value, currentStudentCount: document.getElementById('tr-cur').value,
         availabilityDays: days, preferredTiming: document.getElementById('tr-time').value,
-        languages: document.getElementById('tr-lang').value, shortBio: document.getElementById('tr-bio').value,
+        languages: document.getElementById('tr-lang').value, shortBio: combinedBio,
         upiId: document.getElementById('tr-upi').value, documentUrl: document.getElementById('tr-doc-url').value,
         documentBase64: docB64, documentFileName: docName, documentMimeType: docMime,
         consentAccepted: document.getElementById('tr-consent').checked
       });
+      const myShareUrl = getShareBaseUrl() + '#/?ref=' + encodeURIComponent(res.tutorId);
       document.getElementById('tut-reg-card').innerHTML = `
         <div style="text-align:center;padding:1.5rem 0">
           <span class="badge badge-green">Application Received</span>
           <h2 style="margin-top:0.75rem">Tutor ID: ${esc(res.tutorId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. Our verification team will review your profile and email your portal activation code once approved.</p>
-          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just joined TutorSync as a tutor (100% free, zero lead fees)! Teachers & students can register here: ' + getShareBaseUrl())}">Share with Fellow Tutors</a>
-          <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
+          <p style="font-size:0.84rem">Invite fellow teachers to join free and grow local student demand faster:</p>
+          <div style="display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap">
+            <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('I just joined TutorSync as a tutor (100% free, zero lead fees)! Teachers & students can register here: ' + myShareUrl)}">Share with Fellow Tutors</a>
+            <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
+          </div>
         </div>`;
     } catch (err) {}
   }
@@ -1576,7 +1767,7 @@ async function runHeroQuickCheck() {
   }
 
   /* ========================================================================
-   * STUDENT / PARENT PORTAL (WITH UPI QR + SELF-SERVICE UTR SUBMISSION)
+   * STUDENT / PARENT PORTAL
    * ======================================================================== */
   async function renderStudentPortal() {
     if (!state.session || state.session.user.role !== 'STUDENT') return navigate('#/login');
@@ -1729,7 +1920,7 @@ async function runHeroQuickCheck() {
   }
 
   /* ========================================================================
-   * TUTOR PORTAL (WITH UPI / PAYOUT PROFILE)
+   * TUTOR PORTAL
    * ======================================================================== */
   async function renderTutorPortal() {
     if (!state.session || state.session.user.role !== 'TUTOR') return navigate('#/login');
@@ -2038,7 +2229,6 @@ async function runHeroQuickCheck() {
     }
   }
 
-  /* CRITICAL GATES INBOX (90% AUTOPILOT EXCEPTION QUEUE) */
   async function renderAdminCriticalGates(container) {
     const [g, dash] = await Promise.all([
       apiCall('adminGetCriticalGates', {}, { allowRetry: true }),
@@ -2060,7 +2250,6 @@ async function runHeroQuickCheck() {
         <b>System Status:</b> ${totalGates === 0 ? 'All Clear — Zero pending critical gates.' : totalGates + ' item(s) awaiting your 1-click sign-off.'}
       </div>
 
-      <!-- GATE 1: PARTICIPANT VERIFICATION -->
       <div class="card" style="margin-bottom:1.1rem">
         <h3>Gate 1 · Participant &amp; Safety Verification (${g.gate1Tutors.length} Tutors, ${g.gate1Students.length} Students)</h3>
         ${(g.gate1Tutors.length + g.gate1Students.length) ? `<div class="table-wrap"><table><thead><tr><th>Role / ID</th><th>Name &amp; Contact</th><th>Academic / Fee</th><th>Score</th><th>Quick Actions</th></tr></thead><tbody>
@@ -2089,7 +2278,6 @@ async function runHeroQuickCheck() {
         </tbody></table></div>` : '<div class="empty-state">No participants awaiting verification.</div>'}
       </div>
 
-      <!-- GATE 2: INTERESTED MATCHES READY TO OFFER -->
       <div class="card" style="margin-bottom:1.1rem">
         <h3>Gate 2 · Interested Tutor Matches Ready for Offer (${g.gate2Matches.length})</h3>
         ${g.gate2Matches.length ? `<div class="table-wrap"><table><thead><tr><th>Score</th><th>Student</th><th>Interested Tutor</th><th>Fee vs Budget</th><th>Action</th></tr></thead><tbody>
@@ -2106,7 +2294,6 @@ async function runHeroQuickCheck() {
         </tbody></table></div>` : '<div class="empty-state">No new tutor interest claims awaiting assignment offer.</div>'}
       </div>
 
-      <!-- GATE 3: STUDENT PAYMENT UTR CLAIMS -->
       <div class="card" style="margin-bottom:1.1rem">
         <h3>Gate 3 · Student UTR Payment Claims Awaiting Bank Verification (${g.gate3Claims.length})</h3>
         ${g.gate3Claims.length ? `<div class="table-wrap"><table><thead><tr><th>Claim</th><th>Student</th><th>Invoice</th><th>Amount</th><th>UTR / Method</th><th>Action</th></tr></thead><tbody>
@@ -2124,7 +2311,6 @@ async function runHeroQuickCheck() {
         </tbody></table></div>` : '<div class="empty-state">No pending student UTR claims.</div>'}
       </div>
 
-      <!-- GATE 4: PREPARED PAYOUT BATCHES -->
       <div class="card">
         <h3>Gate 4 · Prepared Tutor Payouts Awaiting Transfer &amp; UTR (${g.gate4Payouts.length})</h3>
         ${g.gate4Payouts.length ? `<div class="table-wrap"><table><thead><tr><th>Payout ID</th><th>Tutor &amp; UPI</th><th>Period</th><th>Net Payout</th><th>Status</th><th>Action</th></tr></thead><tbody>
@@ -2214,7 +2400,6 @@ async function runHeroQuickCheck() {
     draw();
   }
 
-  /* Module 1: Dashboard */
   async function renderAdminDashboard(container) {
     const d = await apiCall('adminGetDashboard', {}, { allowRetry: true });
     const k = d.kpis;
@@ -2237,7 +2422,6 @@ async function runHeroQuickCheck() {
         <div class="kpi-card"><div class="kpi-label">Commission Earned</div><div class="kpi-val">${inr(k.commissionEarned)}</div><div class="kpi-sub">From collected fees</div></div>
         <div class="kpi-card"><div class="kpi-label">Tutor Payable</div><div class="kpi-val">${inr(k.tutorPayable)}</div><div class="kpi-sub">${k.pendingPayouts} open payout batches</div></div>
       </div>
-
       <div class="card" style="margin-bottom:1.25rem">
         <h4 style="margin-bottom:0.65rem">Quick Actions</h4>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
@@ -2252,7 +2436,6 @@ async function runHeroQuickCheck() {
           <button class="btn btn-outline btn-sm" onclick="App.loadAdminModule('notifications')">Send Notification</button>
         </div>
       </div>
-
       <div class="card">
         <h3>Recent Activity</h3>
         ${d.recentActivity.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody>
@@ -2262,7 +2445,6 @@ async function runHeroQuickCheck() {
     `;
   }
 
-  /* Module 4: Verification Queue */
   async function renderAdminVerification(container) {
     const [students, tutors] = await Promise.all([apiCall('adminListStudents', {}), apiCall('adminListTutors', {})]);
     const pendingStu = students.filter(s => s.Status === 'NEW' || s.Status === 'UNDER_REVIEW');
@@ -2317,7 +2499,6 @@ async function runHeroQuickCheck() {
     } catch (e) {}
   }
 
-  /* Module 2: Student Management */
   async function renderAdminStudents(container) {
     const rows = await apiCall('adminListStudents', {});
     state.adminCache.students = rows;
@@ -2382,7 +2563,6 @@ async function runHeroQuickCheck() {
     } catch (err) {}
   }
 
-  /* Module 3: Tutor Management */
   async function renderAdminTutors(container) {
     const rows = await apiCall('adminListTutors', {});
     state.adminCache.tutors = rows;
@@ -2454,7 +2634,6 @@ async function runHeroQuickCheck() {
     try { await apiCall(action, { entityId, reason }); toast('Record archived.', 'success'); loadAdminModule(state.adminModule); } catch (e) {}
   }
 
-  /* Module 5: Matching Engine */
   async function renderAdminMatching(container) {
     const [students, matches] = await Promise.all([apiCall('adminListStudents', {}), apiCall('adminListMatches', {})]);
     const eligible = students.filter(s => s.Status === 'VERIFIED' || s.Status === 'ACTIVE');
@@ -2475,9 +2654,7 @@ async function runHeroQuickCheck() {
     renderDataTable('tbl-matches', {
       rows: matches, filterField: 'ShortlistStatus', filterOptions: ['SUGGESTED','SHORTLISTED','CONTACTED','CONVERTED_TO_ASSIGNMENT','REJECTED'],
       columns: [
-        { key: 'MatchId', label: 'Match ID' },
-        { key: 'StudentName', label: 'Student' },
-        { key: 'TutorName', label: 'Tutor' },
+        { key: 'MatchId', label: 'Match ID' }, { key: 'StudentName', label: 'Student' }, { key: 'TutorName', label: 'Tutor' },
         { key: 'MatchScore', label: 'Score', render: r => `<b>${r.MatchScore}/100</b>` },
         { key: 'TutorExpressedInterest', label: 'Tutor Applied', render: r => (r.TutorExpressedInterest===true||r.TutorExpressedInterest==='TRUE')?'<span class="badge badge-blue">Yes</span>':'No' },
         { key: 'ShortlistStatus', label: 'Status', render: r => statusBadge(r.ShortlistStatus) },
@@ -2518,7 +2695,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminSaveMatchAction', { studentId, tutorId, shortlistStatus, matchingNotes }); toast('Match status saved.', 'success'); runMatching(); } catch (e) {}
   }
 
-  /* Module 6: Tuition Assignments (with Trial/Demo support) */
   async function renderAdminAssignments(container) {
     const rows = await apiCall('adminListAssignments', {});
     state.adminCache.assignments = rows;
@@ -2527,8 +2703,7 @@ async function runHeroQuickCheck() {
       rows, filterField: 'Status', filterOptions: ['PROPOSED','OFFERED','ACCEPTED','ACTIVE','ON_HOLD','COMPLETED','CANCELLED'],
       columns: [
         { key: 'AssignmentId', label: 'ID', render: r => `<b>${esc(r.AssignmentId)}</b>${r.IsTrialEnabled===true||r.IsTrialEnabled==='TRUE'?`<br>${statusBadge(r.TrialStatus||'TRIAL_SCHEDULED')}`:''}` },
-        { key: 'StudentName', label: 'Student' },
-        { key: 'TutorName', label: 'Tutor' },
+        { key: 'StudentName', label: 'Student' }, { key: 'TutorName', label: 'Tutor' },
         { key: 'Subjects', label: 'Class / Subjects', render: r => `${esc(r.ClassGrade)}: ${esc(parseArr(r.Subjects).join(', '))}` },
         { key: 'AgreedMonthlyFee', label: 'Fee / Comm', render: r => `${inr(r.AgreedMonthlyFee)} (${r.CommissionRatePct}%)` },
         { key: 'Status', label: 'Confirmations / Status', render: r => `${statusBadge(r.Status)}<br><span class="help-text">Stu:${r.StudentConfirmed===true||r.StudentConfirmed==='TRUE'?'Y':'N'} · Tut:${r.TutorConfirmed===true||r.TutorConfirmed==='TRUE'?'Y':'N'}</span>` }
@@ -2598,7 +2773,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminUpdateAssignmentStatus', { assignmentId, status, adminForce, reason }); toast('Assignment updated to ' + status, 'success'); loadAdminModule('assignments'); } catch (e) {}
   }
 
-  /* Module 7: Sessions & Attendance */
   async function renderAdminSessions(container) {
     const [sessions, assignments] = await Promise.all([apiCall('adminListSessions', {}), apiCall('adminListAssignments', {})]);
     state.adminCache.assignments = assignments;
@@ -2651,7 +2825,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminSaveSession', { sessionId, attendanceStatus: attendanceStatus.toUpperCase(), adminCorrectionReason }); toast('Session corrected.', 'success'); loadAdminModule('sessions'); } catch (e) {}
   }
 
-  /* Module 8: Invoices */
   async function renderAdminInvoices(container) {
     const rows = await apiCall('adminListInvoices', {});
     state.adminCache.invoices = rows;
@@ -2732,7 +2905,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminResendInvoiceEmail', { invoiceId }); toast('Invoice email resent.', 'success'); } catch (e) {}
   }
 
-  /* Module 9: Student Payments */
   async function renderAdminPayments(container) {
     const rows = await apiCall('adminListPayments', {});
     container.innerHTML = `<div class="topbar-portal"><h2 style="margin:0">Student Payments &amp; Receipts</h2></div><div id="tbl-payments"></div>`;
@@ -2757,7 +2929,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminRecordRefund', { paymentId, amount: Number(amount), notes }); toast('Refund contra-entry recorded.', 'success'); loadAdminModule('payments'); } catch (e) {}
   }
 
-  /* Module 10: Tutor Earnings Ledger */
   async function renderAdminLedger(container) {
     const rows = await apiCall('adminListTutorLedger', {});
     container.innerHTML = `<div class="topbar-portal"><h2 style="margin:0">Tutor Earnings Ledger</h2><button class="btn btn-accent btn-sm" onclick="App.createPayoutBatchPrompt()">Create Payout Batch (All Pending)</button></div><div id="tbl-ledger"></div>`;
@@ -2782,7 +2953,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminAddTutorAdjustment', { ledgerId, adjustmentAmount: Number(adj), reason }); toast('Tutor ledger adjusted.', 'success'); loadAdminModule('ledger'); } catch (e) {}
   }
 
-  /* Module 11: Commission Management */
   async function renderAdminCommissions(container) {
     const [settings, assignments, ledger] = await Promise.all([apiCall('adminGetSettings', {}), apiCall('adminListAssignments', {}), apiCall('adminListTutorLedger', {})]);
     const def = settings.find(s => s.SettingKey === 'DEFAULT_COMMISSION_PCT');
@@ -2804,7 +2974,6 @@ async function runHeroQuickCheck() {
     `;
   }
 
-  /* Module 12: Tutor Payouts */
   async function renderAdminPayouts(container) {
     const rows = await apiCall('adminListPayouts', {});
     container.innerHTML = `<div class="topbar-portal"><h2 style="margin:0">Tutor Payouts &amp; Settlements</h2><button class="btn btn-accent btn-sm" onclick="App.createPayoutBatchPrompt()">+ Prepare Payout Batch</button></div><div id="tbl-payouts"></div>`;
@@ -2864,7 +3033,6 @@ async function runHeroQuickCheck() {
     } catch (err) {}
   }
 
-  /* Module 13: Notifications & Support Tickets */
   async function renderAdminNotificationsAndTickets(container) {
     const [ntfs, tickets] = await Promise.all([apiCall('adminListNotifications', {}), apiCall('adminGetTickets', {})]);
     container.innerHTML = `
@@ -2918,7 +3086,6 @@ async function runHeroQuickCheck() {
     try { await apiCall('adminResolveTicket', { ticketId, status: status.toUpperCase(), adminResponse }); toast('Ticket updated.', 'success'); loadAdminModule('notifications'); } catch (e) {}
   }
 
-  /* Module 14: Reports & CSV Export */
   function renderAdminReports(container) {
     const reports = [
       ['student_registrations','Student Registration Report'], ['tutor_registrations','Tutor Registration Report'],
@@ -2930,8 +3097,7 @@ async function runHeroQuickCheck() {
     ];
     container.innerHTML = `
       <div class="topbar-portal"><h2 style="margin:0">Reports &amp; CSV Export</h2></div>
-      <div class="card" style="margin-bottom:1rem">
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
+      <div class="card" style="margin-bottom:1rem"><div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
           <div class="form-group" style="min-width:250px;flex:1"><label>Report</label><select id="rep-type">${reports.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join('')}</select></div>
           <div class="form-group"><label>Month Filter (Optional YYYY-MM)</label><input id="rep-month" placeholder="e.g. 2026-11"/></div>
           <button class="btn btn-primary" onclick="App.runReport()">Run Report</button>
@@ -2969,7 +3135,6 @@ async function runHeroQuickCheck() {
     URL.revokeObjectURL(url);
   }
 
-  /* Module 15: Settings & Autopilot Triggers */
   async function renderAdminSettings(container) {
     const rows = await apiCall('adminGetSettings', {});
     const editable = rows.filter(r => r.SettingKey.indexOf('DRIVE_') !== 0);
@@ -3017,7 +3182,6 @@ async function runHeroQuickCheck() {
     try { const res = await apiCall('adminRunTriggerManual', { jobName }); toast(jobName + ' executed: ' + JSON.stringify(res), 'success'); } catch (e) {}
   }
 
-  /* Module 16: Audit Log */
   async function renderAdminAudit(container) {
     const rows = await apiCall('adminGetAuditLogs', {});
     container.innerHTML = `<div class="topbar-portal"><h2 style="margin:0">System &amp; Financial Audit Log</h2></div><div id="tbl-audit"></div>`;
@@ -3040,7 +3204,8 @@ async function runHeroQuickCheck() {
   return {
     navigate, scrollToSection, scrollTrack, toggleMobileMenu,
     openModal, closeModal, goToMyPortal, logout, lookupIndiaPin,
-    getDirTab: () => state.dirTab, setDirTab, onDirFilterChange, openDirectoryModal, requestMatchFromDir, applyTeachFromDir, applyQuickFilter, runHeroQuickCheck,
+    getDirTab: () => state.dirTab, setDirTab, onDirFilterChange, openDirectoryModal,
+    requestMatchFromDir, applyTeachFromDir, applyQuickFilter, runHeroQuickCheck, openPrefilledReg, setPortalPreview,
     toggleStudentLocationFields, submitStudentReg,
     toggleTutorLocFields, submitTutorReg, submitPublicContact,
     switchAuthMode, requestLoginOtp, submitAuth,
