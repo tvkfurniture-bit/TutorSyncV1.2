@@ -305,6 +305,18 @@
     .score-fill { height: 100%; background: var(--accent); }
     .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
 
+    .dir-card, .edu-slide { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.dir-card:hover, .edu-slide:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.live-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: #166534; background: var(--success-bg); padding: 0.2rem 0.6rem; border-radius: 999px; margin-bottom: 0.4rem; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulseDot 1.6s infinite; }
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(1.25); } }
+.quick-check-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 0.95rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.quick-check-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem; align-items: end; }
+.filter-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+.filter-pill { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 0.28rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.filter-pill.active, .filter-pill:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+@media (max-width: 720px) { .quick-check-row { grid-template-columns: 1fr; } }
+
     @media (max-width: 960px) {
       .hero-grid, .footer-grid { grid-template-columns: 1fr; }
       .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -753,6 +765,10 @@ const App = (function () {
   function renderDirectoryStrip() {
     const track = document.getElementById('dir-scroll-track');
     if (!track) return;
+    const bt = document.getElementById('dir-tab-tutors');
+const bs = document.getElementById('dir-tab-students');
+if (bt && state.publicDirectory.loaded) bt.textContent = 'Verified Tutors Available (' + state.publicDirectory.tutors.length + ')';
+if (bs && state.publicDirectory.loaded) bs.textContent = 'Students Looking for Tutors (' + state.publicDirectory.students.length + ')';
     const filtered = filterDirectoryItems(state.dirTab, state.dirQuery, state.dirMode);
     if (!state.publicDirectory.loaded) {
       track.innerHTML = `<div class="card" style="width:100%"><p style="margin:0">Loading verified tutors and tuition needs...</p></div>`;
@@ -767,6 +783,44 @@ const App = (function () {
     }
     track.innerHTML = filtered.slice(0, 15).map(it => renderDirCardHtml(it, state.dirTab)).join('');
   }
+
+  function applyQuickFilter(tag, btnEl) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  if (tag === 'All') { state.dirQuery = ''; state.dirMode = ''; }
+  else if (tag === 'Online' || tag === 'Offline') { state.dirMode = tag.toUpperCase(); state.dirQuery = ''; }
+  else { state.dirQuery = tag; state.dirMode = ''; }
+  const qEl = document.getElementById('dir-q'); if (qEl) qEl.value = state.dirQuery;
+  const mEl = document.getElementById('dir-mode'); if (mEl) mEl.value = state.dirMode;
+  renderDirectoryStrip();
+}
+
+async function runHeroQuickCheck() {
+  await loadPublicDirectory(false);
+  const role = document.getElementById('hq-role').value;
+  const sub = document.getElementById('hq-sub').value.trim();
+  const mode = document.getElementById('hq-mode').value;
+  state.dirTab = role;
+  state.dirQuery = sub;
+  state.dirMode = mode;
+  const matches = filterDirectoryItems(role, sub, mode);
+  const box = document.getElementById('hq-result');
+  box.classList.remove('hidden');
+  const targetRoute = role === 'tutors' ? '#/register-student' : '#/register-tutor';
+  box.innerHTML = matches.length
+    ? `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.55rem 0.75rem;background:var(--success-bg);border-radius:8px;color:#166534">
+         <span><b>${matches.length} live verified match(es)</b> found right now!</span>
+         <span style="display:flex;gap:0.4rem">
+           <button type="button" class="btn btn-primary btn-sm" onclick="App.openDirectoryModal('${role}')">View Matches</button>
+           <button type="button" class="btn btn-outline btn-sm" onclick="App.navigate('${targetRoute}')">Register Free</button>
+         </span>
+       </div>`
+    : `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.55rem 0.75rem;background:var(--accent-light);border-radius:8px;color:#075985">
+         <span>No exact public match listed yet—register free and our Autopilot engine will match &amp; notify you first!</span>
+         <button type="button" class="btn btn-primary btn-sm" onclick="App.navigate('${targetRoute}')">Register Free</button>
+       </div>`;
+  setDirTab(role, false);
+}
 
   function setDirTab(tab, inModal) {
     state.dirTab = tab;
@@ -898,6 +952,22 @@ const App = (function () {
               <button class="btn btn-accent" onclick="App.navigate('#/register-tutor')">Join as a Tutor (Free)</button>
               <button class="btn btn-outline" onclick="App.openDirectoryModal('tutors')">${EDU_ICONS.search} Browse Tutors &amp; Needs</button>
             </div>
+            <div class="quick-check-box">
+  <div style="font-size:0.82rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem">Instant Availability Check (Live)</div>
+  <div class="quick-check-row">
+    <div class="form-group"><label style="font-size:0.75rem">Looking For</label>
+      <select id="hq-role"><option value="tutors">Find a Tutor</option><option value="students">Find Students (Tutor)</option></select>
+    </div>
+    <div class="form-group"><label style="font-size:0.75rem">Subject / Keyword</label>
+      <input id="hq-sub" placeholder="e.g., Math, Physics, CBSE" />
+    </div>
+    <div class="form-group"><label style="font-size:0.75rem">Mode</label>
+      <select id="hq-mode"><option value="">Any Mode</option><option value="OFFLINE">Home (Offline)</option><option value="ONLINE">Online</option><option value="HYBRID">Hybrid</option></select>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" style="height:38px" onclick="App.runHeroQuickCheck()">Check Live</button>
+  </div>
+  <div id="hq-result" class="hidden" style="margin-top:0.65rem;font-size:0.85rem"></div>
+</div>
             <div class="einstein-quote">
               <div style="flex-shrink:0">${EDU_ICONS.einsteinBadge}</div>
               <div>
@@ -921,6 +991,7 @@ const App = (function () {
         <div class="container">
           <div class="gallery-header">
             <div>
+            <span class="live-pill"><span class="live-dot"></span> LIVE DIRECTORY</span>
               <h2 style="margin-bottom:0.25rem">Live Verified Tutors &amp; Tuition Needs</h2>
               <p style="margin:0">Search or scroll verified openings. Personal contact info stays protected until matched.</p>
             </div>
@@ -941,6 +1012,11 @@ const App = (function () {
               <option value="HYBRID" ${state.dirMode==='HYBRID'?'selected':''}>Hybrid</option>
             </select>
           </div>
+          <div class="filter-pills">
+  ${['All','Mathematics','Physics','Science','English','CBSE','ICSE','Online','Offline'].map(tag =>
+    `<button type="button" class="filter-pill ${tag==='All'&&!state.dirQuery&&!state.dirMode?'active':''}" onclick="App.applyQuickFilter('${tag}', this)">${tag}</button>`
+  ).join('')}
+</div>
           <div class="scroll-track" id="dir-scroll-track"></div>
         </div>
       </section>
@@ -2941,7 +3017,7 @@ const App = (function () {
   return {
     navigate, scrollToSection, scrollTrack, toggleMobileMenu,
     openModal, closeModal, goToMyPortal, logout, lookupIndiaPin,
-    getDirTab: () => state.dirTab, setDirTab, onDirFilterChange, openDirectoryModal, requestMatchFromDir, applyTeachFromDir,
+    getDirTab: () => state.dirTab, setDirTab, onDirFilterChange, openDirectoryModal, requestMatchFromDir, applyTeachFromDir, applyQuickFilter, runHeroQuickCheck,
     toggleStudentLocationFields, submitStudentReg,
     toggleTutorLocFields, submitTutorReg, submitPublicContact,
     switchAuthMode, requestLoginOtp, submitAuth,
