@@ -1387,7 +1387,7 @@ async function runHeroQuickCheck() {
           <span class="badge badge-green">Registration Confirmed</span>
           <h2 style="margin-top:0.75rem">Student ID: ${esc(res.studentId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. A confirmation email has been sent. Once verified, you will receive your portal activation code and curated tutor matches.</p>
-          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: https://tvkfurniture-bit.github.io/tutorsync/')}">Share in Parent Group</a>
+          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just requested a verified tutor free on TutorSync! Parents & tutors can join free here: ' + getShareBaseUrl())}">Share in Parent Group</a>
           <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
         </div>`;
     } catch (err) {}
@@ -1500,7 +1500,7 @@ async function runHeroQuickCheck() {
           <span class="badge badge-green">Application Received</span>
           <h2 style="margin-top:0.75rem">Tutor ID: ${esc(res.tutorId)}</h2>
           <p>Profile Completeness: <b>${res.profileScore}%</b>. Our verification team will review your profile and email your portal activation code once approved.</p>
-          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just joined TutorSync as a tutor (100% free, zero lead fees)! Teachers & students can register here: https://tvkfurniture-bit.github.io/tutorsync/')}">Share with Fellow Tutors</a>
+          <a class="btn btn-wa" target="_blank" rel="noopener" style="margin-right:0.5rem" href="https://wa.me/?text=${encodeURIComponent('I just joined TutorSync as a tutor (100% free, zero lead fees)! Teachers & students can register here: ' + getShareBaseUrl())}">Share with Fellow Tutors</a>
           <button class="btn btn-primary" onclick="App.navigate('#/')">Return to Home</button>
         </div>`;
     } catch (err) {}
