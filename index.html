@@ -1,0 +1,2962 @@
+/**
+ * ============================================================================
+ * TUTORSYNC — GOOGLE APPS SCRIPT BACKEND (Code.gs)
+ * Autopilot + Human-in-the-Loop Critical Gates · India-First Edition
+ * ============================================================================
+ */
+
+const APP_CONSTANTS = {
+  APP_NAME: 'TutorSync',
+  TOKEN_TTL_SECONDS: 43200, // 12 hours
+  OTP_TTL_SECONDS: 900,     // 15 minutes
+  MAX_LOGIN_ATTEMPTS: 5,
+  DAILY_MAIL_CAP: 100,      // Free Gmail daily limit awareness
+  PROP_SPREADSHEET_ID: 'TS_SPREADSHEET_ID',
+  PROP_SESSIONS: 'TS_ACTIVE_SESSIONS',
+  PROP_HMAC_SECRET: 'TS_HMAC_SECRET',
+  PROP_ADMIN_EMAIL: 'ADMIN_EMAIL',
+  PROP_ADMIN_PASSWORD: 'ADMIN_PASSWORD',
+  BOARDS: ['CBSE', 'ICSE', 'ISC', 'WBBSE / WBCHSE', 'State Board', 'IB', 'IGCSE', 'WB', 'OTHER'],
+  MODES: ['ONLINE', 'OFFLINE', 'HYBRID'],
+  CLASSES: [
+    'Class 1–5', 'Class 6–8', 'Class 9', 'Class 10', 'Class 11', 'Class 12',
+    'JEE / NEET', 'CUET / Olympiads', 'Undergraduate', 'Spoken English / Coding'
+  ],
+  SUBJECTS: [
+    'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology',
+    'English', 'Bengali', 'Hindi', 'History', 'Geography',
+    'Computer Science', 'Coding / Python', 'Economics', 'Accountancy',
+    'Business Studies', 'All Subjects'
+  ],
+  STUDENT_STATUSES: ['NEW', 'UNDER_REVIEW', 'VERIFIED', 'ACTIVE', 'INACTIVE', 'REJECTED'],
+  TUTOR_STATUSES: ['NEW', 'UNDER_REVIEW', 'VERIFIED', 'ACTIVE', 'INACTIVE', 'REJECTED'],
+  ASSIGNMENT_STATUSES: ['PROPOSED', 'OFFERED', 'ACCEPTED', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'],
+  TRIAL_STATUSES: ['NONE', 'TRIAL_SCHEDULED', 'TRIAL_COMPLETED'],
+  SESSION_STATUSES: ['SCHEDULED', 'COMPLETED', 'CANCELLED_STUDENT', 'CANCELLED_TUTOR', 'RESCHEDULED'],
+  INVOICE_STATUSES: ['DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'],
+  PAYOUT_STATUSES: ['PENDING', 'APPROVED', 'PAID', 'CANCELLED'],
+  TICKET_STATUSES: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
+  CLAIM_STATUSES: ['PENDING_VERIFICATION', 'RECONCILED', 'REJECTED']
+};
+
+const DB_SCHEMA = {
+  Settings: [
+    'SettingKey', 'SettingValue', 'DataType', 'Description', 'UpdatedAt', 'UpdatedBy'
+  ],
+  Users: [
+    'UserId', 'Email', 'Role', 'LinkedEntityId', 'PasswordHash', 'PasswordSalt',
+    'AuthStatus', 'OtpHash', 'OtpExpiresAt', 'FailedAttempts', 'LastLoginAt',
+    'CreatedAt', 'UpdatedAt'
+  ],
+  Students: [
+    'StudentId', 'ParentOrStudentName', 'Phone', 'WhatsApp', 'Email', 'ClassGrade',
+    'Board', 'BoardOther', 'SubjectsRequired', 'PreferredTutorGender', 'TeachingMode',
+    'AreaLocality', 'PinCode', 'PreferredDays', 'PreferredTime', 'BudgetPerMonth',
+    'PreferredStartDate', 'AdditionalNotes', 'ConsentAccepted', 'ConsentTimestamp',
+    'Status', 'VerificationNotes', 'VerifiedBy', 'VerifiedAt',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt', 'ProfileScore'
+  ],
+  Tutors: [
+    'TutorId', 'FullName', 'Phone', 'WhatsApp', 'Email', 'Gender',
+    'Qualifications', 'ExperienceYears', 'Subjects', 'ClassesGrades', 'BoardExpertise',
+    'TeachingMode', 'PreferredLocations', 'PinCodes', 'MaxTravelDistanceKm',
+    'AvailabilityDays', 'PreferredTiming', 'ExpectedMonthlyFee', 'CurrentStudentCount',
+    'Languages', 'ShortBio', 'DocumentUrl', 'ConsentAccepted', 'ConsentTimestamp',
+    'Status', 'VerificationNotes', 'VerifiedBy', 'VerifiedAt',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt',
+    'ProfileScore', 'UpiId', 'BankAccountMasked'
+  ],
+  Matches: [
+    'MatchId', 'StudentId', 'TutorId', 'MatchScore', 'ScoreBreakdownJson',
+    'TutorExpressedInterest', 'ShortlistStatus', 'MatchingNotes', 'CreatedBy',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt'
+  ],
+  Assignments: [
+    'AssignmentId', 'MatchId', 'StudentId', 'TutorId', 'Subjects', 'ClassGrade',
+    'TeachingMode', 'AgreedMonthlyFee', 'TuitionFrequency', 'SessionsPerWeek',
+    'SessionDurationMins', 'StartDate', 'EndDate', 'PaymentDueDay',
+    'CommissionRatePct', 'IsCommissionOverride', 'CommissionOverrideReason',
+    'StudentConfirmed', 'StudentConfirmedAt', 'TutorConfirmed', 'TutorConfirmedAt',
+    'Status', 'FinalBillApproved', 'Notes',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt',
+    'IsTrialEnabled', 'TrialStatus', 'TrialDate', 'TrialNotes'
+  ],
+  Sessions: [
+    'SessionId', 'AssignmentId', 'StudentId', 'TutorId', 'SessionDate', 'StartTime',
+    'DurationMins', 'SessionType', 'AttendanceStatus', 'TutorConfirmed', 'StudentConfirmed',
+    'Notes', 'AdminCorrected', 'AdminCorrectionReason',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt'
+  ],
+  Invoices: [
+    'InvoiceId', 'InvoiceNumber', 'IdempotencyKey', 'BillingMonth', 'AssignmentId',
+    'StudentId', 'TutorId', 'BaseTuitionAmount', 'AdjustmentAmount', 'AdjustmentNotes',
+    'TotalAmount', 'AmountPaid', 'BalanceDue', 'LockedCommissionPct', 'DueDate',
+    'PaymentStatus', 'PdfFileId', 'PdfUrl', 'DeliveryStatus', 'DeliveredAt',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt'
+  ],
+  Payments: [
+    'PaymentId', 'ReceiptNumber', 'InvoiceId', 'StudentId', 'AssignmentId',
+    'TransactionType', 'PaymentDate', 'Amount', 'PaymentMethod', 'TransactionRef',
+    'Notes', 'RecordedBy', 'CreatedAt'
+  ],
+  PaymentClaims: [
+    'ClaimId', 'InvoiceId', 'InvoiceNumber', 'StudentId', 'Amount', 'PaymentDate',
+    'PaymentMethod', 'TransactionRef', 'Notes', 'Status', 'ReviewedBy',
+    'ReviewedAt', 'ReviewNotes', 'CreatedAt', 'UpdatedAt'
+  ],
+  TutorLedger: [
+    'LedgerId', 'IdempotencyKey', 'TutorId', 'AssignmentId', 'InvoiceId', 'PaymentId',
+    'BillingMonth', 'EligibleCollectedAmount', 'CommissionRatePct', 'CommissionAmount',
+    'TutorAdjustmentAmount', 'AdjustmentReason', 'NetTutorPayable',
+    'PayoutStatus', 'PayoutId', 'CreatedAt', 'UpdatedAt'
+  ],
+  Payouts: [
+    'PayoutId', 'BatchCode', 'TutorId', 'PeriodLabel', 'GrossCollectedTotal',
+    'CommissionTotal', 'AdjustmentTotal', 'NetPayoutAmount', 'Status',
+    'ApprovedBy', 'ApprovedAt', 'PayoutMethod', 'PayoutReference', 'PayoutDate',
+    'EvidenceUrl', 'StatementPdfUrl', 'PaidBy', 'CreatedAt', 'UpdatedAt'
+  ],
+  Notifications: [
+    'NotificationId', 'IdempotencyKey', 'RecipientRole', 'RecipientId',
+    'RecipientEmail', 'Channel', 'TemplateType', 'Subject', 'BodyPreview',
+    'Status', 'ErrorMessage', 'SentAt', 'CreatedAt'
+  ],
+  AuditLog: [
+    'AuditId', 'Timestamp', 'ActorUserId', 'ActorRole', 'Action',
+    'EntityType', 'EntityId', 'BeforeJson', 'AfterJson', 'Reason'
+  ],
+  SupportTickets: [
+    'TicketId', 'RaisedByRole', 'LinkedEntityId', 'ContactName', 'ContactEmail',
+    'ContactPhone', 'Category', 'Subject', 'Description', 'AssignmentId',
+    'Status', 'AdminResponse', 'ResolvedBy', 'ResolvedAt',
+    'IsDeleted', 'DeletedAt', 'DeletedBy', 'CreatedAt', 'UpdatedAt'
+  ]
+};
+
+/* ============================================================================
+ * 1. NON-DESTRUCTIVE SETUP, MIGRATION & TRIGGER INSTALLATION
+ * ============================================================================ */
+
+function setupTutorSync(options) {
+  const opts = options || {};
+  const props = PropertiesService.getScriptProperties();
+
+  let ssId = opts.spreadsheetId || props.getProperty(APP_CONSTANTS.PROP_SPREADSHEET_ID);
+  let ss = null;
+  if (ssId) {
+    try { ss = SpreadsheetApp.openById(ssId); } catch (e) { ss = null; }
+  }
+  if (!ss) {
+    try { ss = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) { ss = null; }
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create('TutorSync_Database');
+  }
+  ssId = ss.getId();
+  props.setProperty(APP_CONSTANTS.PROP_SPREADSHEET_ID, ssId);
+
+  if (!props.getProperty(APP_CONSTANTS.PROP_HMAC_SECRET)) {
+    props.setProperty(APP_CONSTANTS.PROP_HMAC_SECRET, Utilities.getUuid() + '-' + Utilities.getUuid());
+  }
+
+  // Safely create missing sheets & append any new schema columns without touching existing data
+  Object.keys(DB_SCHEMA).forEach(function (sheetName) {
+    const requiredHeaders = DB_SCHEMA[sheetName];
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+      sheet.setFrozenRows(1);
+      sheet.getRange(1, 1, 1, requiredHeaders.length).setFontWeight('bold').setBackground('#0F2942').setFontColor('#FFFFFF');
+    } else {
+      const lastCol = Math.max(sheet.getLastColumn(), 1);
+      const existingHeaders = sheet.getLastRow() >= 1
+        ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String).filter(Boolean)
+        : [];
+      if (existingHeaders.length === 0) {
+        sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+        sheet.setFrozenRows(1);
+      } else {
+        const missing = requiredHeaders.filter(function (h) { return existingHeaders.indexOf(h) === -1; });
+        if (missing.length > 0) {
+          sheet.getRange(1, existingHeaders.length + 1, 1, missing.length).setValues([missing])
+            .setFontWeight('bold').setBackground('#0F2942').setFontColor('#FFFFFF');
+        }
+      }
+    }
+  });
+
+  const defaultSheet = ss.getSheetByName('Sheet1');
+  if (defaultSheet && ss.getSheets().length > 1 && defaultSheet.getLastRow() === 0) {
+    ss.deleteSheet(defaultSheet);
+  }
+
+  const rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), 'TutorSync_Files');
+  const invoicesFolder = getOrCreateFolder_(rootFolder, 'Invoices');
+  const payoutsFolder = getOrCreateFolder_(rootFolder, 'PayoutStatements');
+  const docsFolder = getOrCreateFolder_(rootFolder, 'TutorDocuments');
+
+  const adminEmail = (opts.adminEmail || props.getProperty(APP_CONSTANTS.PROP_ADMIN_EMAIL) || Session.getEffectiveUser().getEmail() || 'admin@tutorsync.local').toLowerCase().trim();
+  const defaultSettings = [
+    ['DEFAULT_COMMISSION_PCT', '10', 'NUMBER', 'Default platform commission percentage (8-10%)'],
+    ['MIN_COMMISSION_PCT', '8', 'NUMBER', 'Minimum standard commission percentage'],
+    ['MAX_COMMISSION_PCT', '10', 'NUMBER', 'Maximum standard commission percentage'],
+    ['BILLING_DAY', '1', 'NUMBER', 'Day of month for automated invoice generation (1-28)'],
+    ['PAYMENT_GRACE_DAYS', '7', 'NUMBER', 'Default days until invoice due date'],
+    ['INVOICE_PREFIX', 'TS-INV-', 'STRING', 'Prefix for generated invoice numbers'],
+    ['RECEIPT_PREFIX', 'TS-RCP-', 'STRING', 'Prefix for payment receipt numbers'],
+    ['MERCHANT_UPI_ID', '', 'STRING', 'Your NPCI UPI ID (e.g. yourname@okicici) for Invoice QR & payment links'],
+    ['MERCHANT_NAME', 'TutorSync', 'STRING', 'Payee name displayed in UPI apps'],
+    ['MIN_PAYOUT_THRESHOLD', '500', 'NUMBER', 'Minimum net payable (INR) for autopilot monthly tutor payout batching'],
+    ['AUTO_PAYOUT_BATCH_DAY', '5', 'NUMBER', 'Day of month for autopilot tutor payout batch preparation'],
+    ['AUTO_MATCH_OUTREACH_ENABLED', 'TRUE', 'BOOLEAN', 'Automatically run matching and email top verified tutors when a student is verified'],
+    ['PAYMENT_INSTRUCTIONS', 'Scan the UPI QR or pay via UPI/Bank Transfer using your Invoice Number as payment reference, then submit your 12-digit UTR in the Student Portal.', 'STRING', 'Payment instructions printed on student invoices'],
+    ['SUPPORT_EMAIL', adminEmail, 'STRING', 'Public support contact email'],
+    ['SUPPORT_WHATSAPP', '', 'STRING', 'Public support WhatsApp number (10 digits)'],
+    ['ADMIN_ALERT_EMAIL', adminEmail, 'STRING', 'Administrator alert recipient email'],
+    ['DRIVE_INVOICE_FOLDER_ID', invoicesFolder.getId(), 'STRING', 'Drive folder ID for monthly invoice PDFs'],
+    ['DRIVE_PAYOUT_FOLDER_ID', payoutsFolder.getId(), 'STRING', 'Drive folder ID for tutor payout statement PDFs'],
+    ['DRIVE_DOCS_FOLDER_ID', docsFolder.getId(), 'STRING', 'Drive folder ID for tutor verification documents'],
+    ['AUTO_INVOICE_ENABLED', 'TRUE', 'BOOLEAN', 'Enable monthly automated invoice generation'],
+    ['AUTO_REMINDERS_ENABLED', 'TRUE', 'BOOLEAN', 'Enable automated overdue and alert emails'],
+    ['PRIVACY_VERSION', '1.1', 'STRING', 'Current privacy policy version']
+  ];
+
+  const existingSettings = getAllRows_('Settings', true);
+  const existingKeys = {};
+  existingSettings.forEach(function (r) { existingKeys[r.SettingKey] = true; });
+  const now = nowIso_();
+  defaultSettings.forEach(function (item) {
+    if (!existingKeys[item[0]]) {
+      appendRow_('Settings', {
+        SettingKey: item[0], SettingValue: item[1], DataType: item[2],
+        Description: item[3], UpdatedAt: now, UpdatedBy: 'SYSTEM_SETUP'
+      });
+    }
+  });
+
+  const users = getAllRows_('Users', true);
+  const hasAdmin = users.some(function (u) { return u.Role === 'ADMIN' && u.AuthStatus === 'ACTIVE'; });
+  if (!hasAdmin) {
+    const initialPass = opts.adminPassword || props.getProperty(APP_CONSTANTS.PROP_ADMIN_PASSWORD) || ('TS@' + Utilities.getUuid().slice(0, 8));
+    const salt = generateSalt_();
+    appendRow_('Users', {
+      UserId: generateId_('Users', 'USR'),
+      Email: adminEmail, Role: 'ADMIN', LinkedEntityId: '',
+      PasswordHash: hashSecret_(initialPass, salt), PasswordSalt: salt,
+      AuthStatus: 'ACTIVE', OtpHash: '', OtpExpiresAt: '', FailedAttempts: 0,
+      LastLoginAt: '', CreatedAt: now, UpdatedAt: now
+    });
+    Logger.log('TutorSync Admin Created -> Email: ' + adminEmail + ' | Temporary Password: ' + initialPass);
+  }
+
+  if (opts.installTriggers === true) installTriggers();
+  CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+
+  return {
+    spreadsheetId: ssId,
+    spreadsheetUrl: ss.getUrl(),
+    invoicesFolderId: invoicesFolder.getId(),
+    adminEmail: adminEmail
+  };
+}
+
+function getOrCreateFolder_(parent, name) {
+  const iter = parent.getFoldersByName(name);
+  if (iter.hasNext()) return iter.next();
+  return parent.createFolder(name);
+}
+
+function installTriggers() {
+  const triggerJobs = [
+    'jobGenerateMonthlyInvoices',
+    'jobDispatchPendingInvoices',
+    'jobCheckOverdueInvoices',
+    'jobPendingRegistrationAlert',
+    'jobAssignmentExpiryAlert',
+    'jobTutorPayoutReminder',
+    'jobMonthlyAdminReport',
+    'jobAutoMatchAndOutreach',
+    'jobAutoPreparePayoutBatches'
+  ];
+
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (triggerJobs.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
+  });
+
+  ScriptApp.newTrigger('jobGenerateMonthlyInvoices').timeBased().onMonthDay(1).atHour(6).create();
+  ScriptApp.newTrigger('jobAutoPreparePayoutBatches').timeBased().onMonthDay(5).atHour(7).create();
+  ScriptApp.newTrigger('jobMonthlyAdminReport').timeBased().onMonthDay(2).atHour(7).create();
+  ScriptApp.newTrigger('jobDispatchPendingInvoices').timeBased().everyDays(1).atHour(8).create();
+  ScriptApp.newTrigger('jobCheckOverdueInvoices').timeBased().everyDays(1).atHour(9).create();
+  ScriptApp.newTrigger('jobPendingRegistrationAlert').timeBased().everyDays(1).atHour(10).create();
+  ScriptApp.newTrigger('jobAssignmentExpiryAlert').timeBased().everyDays(1).atHour(11).create();
+  ScriptApp.newTrigger('jobAutoMatchAndOutreach').timeBased().everyHours(4).create();
+  ScriptApp.newTrigger('jobTutorPayoutReminder').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(11).create();
+
+  return { installed: triggerJobs };
+}
+
+/* ============================================================================
+ * 2. DATA ACCESS & BATCH WRITE LAYER
+ * ============================================================================ */
+
+function getSpreadsheet_() {
+  const ssId = PropertiesService.getScriptProperties().getProperty(APP_CONSTANTS.PROP_SPREADSHEET_ID);
+  if (!ssId) throw new Error('Database not initialized. Run setupTutorSync() first.');
+  return SpreadsheetApp.openById(ssId);
+}
+
+function getSheetChecked_(sheetName) {
+  const ss = getSpreadsheet_();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('Missing database sheet: ' + sheetName + '. Run setupTutorSync() to migrate.');
+  return sheet;
+}
+
+function getAllRows_(sheetName, includeDeleted) {
+  const sheet = getSheetChecked_(sheetName);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const lastCol = sheet.getLastColumn();
+  const values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  const headers = values[0].map(String);
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const rowArr = values[i];
+    if (rowArr.every(function (c) { return c === '' || c === null; })) continue;
+    const obj = { _rowIndex: i + 1 };
+    for (let j = 0; j < headers.length; j++) obj[headers[j]] = rowArr[j];
+    if (!includeDeleted && (obj.IsDeleted === true || obj.IsDeleted === 'TRUE')) continue;
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function findRowByField_(sheetName, field, value, includeDeleted) {
+  const rows = getAllRows_(sheetName, includeDeleted);
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][field]) === String(value)) return rows[i];
+  }
+  return null;
+}
+
+function appendRow_(sheetName, dataObj) {
+  appendRowsBatch_(sheetName, [dataObj]);
+  return dataObj;
+}
+
+function appendRowsBatch_(sheetName, objArray) {
+  if (!objArray || objArray.length === 0) return [];
+  const sheet = getSheetChecked_(sheetName);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  const matrix = objArray.map(function (dataObj) {
+    return headers.map(function (h) {
+      return sanitizeForSheet_(dataObj.hasOwnProperty(h) ? dataObj[h] : '');
+    });
+  });
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, matrix.length, headers.length).setValues(matrix);
+  return objArray;
+}
+
+function updateRowByKey_(sheetName, keyField, keyValue, updatesObj) {
+  const sheet = getSheetChecked_(sheetName);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const lastCol = sheet.getLastColumn();
+  const values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  const headers = values[0].map(String);
+  const keyIdx = headers.indexOf(keyField);
+  if (keyIdx === -1) throw new Error('Key field not found: ' + keyField);
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][keyIdx]) === String(keyValue)) {
+      const updated = {};
+      for (let j = 0; j < headers.length; j++) {
+        const h = headers[j];
+        if (updatesObj.hasOwnProperty(h)) values[i][j] = sanitizeForSheet_(updatesObj[h]);
+        updated[h] = values[i][j];
+      }
+      sheet.getRange(i + 1, 1, 1, lastCol).setValues([values[i]]);
+      return updated;
+    }
+  }
+  return null;
+}
+
+function getSettingsMap_() {
+  const rows = getAllRows_('Settings', true);
+  const map = {};
+  rows.forEach(function (r) {
+    let val = r.SettingValue;
+    if (r.DataType === 'NUMBER') val = Number(val);
+    else if (r.DataType === 'BOOLEAN') val = (val === true || String(val).toUpperCase() === 'TRUE');
+    map[r.SettingKey] = val;
+  });
+  return map;
+}
+
+function generateId_(sheetName, prefix) {
+  const year = new Date().getFullYear();
+  const key = 'SEQ_' + sheetName.toUpperCase() + '_' + year;
+  const props = PropertiesService.getScriptProperties();
+  let seq = Number(props.getProperty(key) || '0');
+  if (seq === 0) seq = getAllRows_(sheetName, true).length;
+  seq += 1;
+  props.setProperty(key, String(seq));
+  const pad5 = ['Sessions', 'Invoices', 'Payments', 'TutorLedger', 'Notifications', 'PaymentClaims'];
+  const padLen = (sheetName === 'AuditLog') ? 6 : (pad5.indexOf(sheetName) !== -1 ? 5 : 4);
+  return prefix + '-' + year + '-' + String(seq).padStart(padLen, '0');
+}
+
+function writeAudit_(actorUserId, actorRole, action, entityType, entityId, beforeObj, afterObj, reason) {
+  try {
+    appendRow_('AuditLog', {
+      AuditId: generateId_('AuditLog', 'AUD'),
+      Timestamp: nowIso_(),
+      ActorUserId: actorUserId || 'SYSTEM',
+      ActorRole: actorRole || 'SYSTEM',
+      Action: action,
+      EntityType: entityType,
+      EntityId: entityId || '',
+      BeforeJson: beforeObj ? JSON.stringify(maskSensitiveForAudit_(beforeObj)).slice(0, 4000) : '',
+      AfterJson: afterObj ? JSON.stringify(maskSensitiveForAudit_(afterObj)).slice(0, 4000) : '',
+      Reason: reason || ''
+    });
+  } catch (e) { Logger.log('Audit write failed: ' + e.message); }
+}
+
+function maskSensitiveForAudit_(obj) {
+  const copy = JSON.parse(JSON.stringify(obj));
+  delete copy.PasswordHash;
+  delete copy.PasswordSalt;
+  delete copy.OtpHash;
+  delete copy._rowIndex;
+  return copy;
+}
+
+/* ============================================================================
+ * 3. SECURITY, SANITIZATION, VALIDATION, QUOTA & AUTH
+ * ============================================================================ */
+
+function nowIso_() { return new Date().toISOString(); }
+function todayIso_() { return Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd'); }
+function currentMonthStr_() { return Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM'); }
+function round2_(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+
+function sanitizeForSheet_(val) {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'number' || typeof val === 'boolean') return val;
+  if (val instanceof Date) return val.toISOString();
+  let s = String(val);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return s;
+}
+
+function escapeHtml_(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function cleanStr_(val, maxLen) {
+  if (val === null || val === undefined) return '';
+  let s = String(val).trim();
+  if (maxLen && s.length > maxLen) s = s.slice(0, maxLen);
+  return s;
+}
+
+function normalizePhone_(val) {
+  const digits = String(val || '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.indexOf('91') === 0) return digits.slice(2);
+  if (digits.length === 11 && digits.indexOf('0') === 0) return digits.slice(1);
+  return digits;
+}
+
+function isValidEmail_(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim()); }
+function isValidIndianPhone_(phone) { return /^[6-9]\d{9}$/.test(normalizePhone_(phone)); }
+function isValidPin_(pin) { return /^\d{6}$/.test(String(pin || '').trim()); }
+
+function parseListField_(val) {
+  if (Array.isArray(val)) return val.map(function (x) { return String(x).trim(); }).filter(Boolean);
+  if (!val) return [];
+  const s = String(val).trim();
+  if (s.indexOf('[') === 0) {
+    try {
+      const arr = JSON.parse(s);
+      if (Array.isArray(arr)) return arr.map(function (x) { return String(x).trim(); }).filter(Boolean);
+    } catch (e) {}
+  }
+  return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
+function computeStudentProfileScore_(s) {
+  let score = 0;
+  if (s.ParentOrStudentName) score += 15;
+  if (isValidIndianPhone_(s.Phone)) score += 15;
+  if (isValidEmail_(s.Email)) score += 10;
+  if (s.ClassGrade && s.Board) score += 15;
+  if (parseListField_(s.SubjectsRequired).length > 0) score += 15;
+  if (s.TeachingMode === 'ONLINE' || (s.AreaLocality && isValidPin_(s.PinCode))) score += 15;
+  if (parseListField_(s.PreferredDays).length > 0 && s.PreferredTime) score += 10;
+  if (Number(s.BudgetPerMonth) > 0) score += 5;
+  return Math.min(100, score);
+}
+
+function computeTutorProfileScore_(t) {
+  let score = 0;
+  if (t.FullName && isValidIndianPhone_(t.Phone) && isValidEmail_(t.Email)) score += 20;
+  if (t.Qualifications) score += 15;
+  if (parseListField_(t.Subjects).length > 0 && parseListField_(t.ClassesGrades).length > 0) score += 20;
+  if (parseListField_(t.BoardExpertise).length > 0) score += 10;
+  if (t.TeachingMode === 'ONLINE' || (t.PreferredLocations || parseListField_(t.PinCodes).length > 0)) score += 15;
+  if (t.ShortBio && String(t.ShortBio).length >= 25) score += 10;
+  if (t.DocumentUrl || t.UpiId) score += 10;
+  return Math.min(100, score);
+}
+
+function getDailyMailCount_() {
+  const key = 'TS_MAIL_CNT_' + todayIso_();
+  return Number(PropertiesService.getScriptProperties().getProperty(key) || '0');
+}
+
+function incrementDailyMailCount_() {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'TS_MAIL_CNT_' + todayIso_();
+  const cur = Number(props.getProperty(key) || '0');
+  props.setProperty(key, String(cur + 1));
+  return cur + 1;
+}
+
+function buildUpiUri_(settings, amount, refNote) {
+  const upiId = cleanStr_(settings.MERCHANT_UPI_ID, 80);
+  if (!upiId) return '';
+  const name = encodeURIComponent(cleanStr_(settings.MERCHANT_NAME || 'TutorSync', 40));
+  const amt = Number(amount || 0).toFixed(2);
+  const tn = encodeURIComponent(cleanStr_(refNote || 'TuitionFee', 50));
+  return 'upi://pay?pa=' + encodeURIComponent(upiId) + '&pn=' + name + '&am=' + amt + '&tn=' + tn + '&cu=INR';
+}
+
+function generateSalt_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 16); }
+
+function hashSecret_(secret, salt) {
+  const secretKey = PropertiesService.getScriptProperties().getProperty(APP_CONSTANTS.PROP_HMAC_SECRET) || 'ts_default';
+  let digest = salt + ':' + secret + ':' + secretKey;
+  for (let i = 0; i < 50; i++) {
+    const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, digest);
+    digest = raw.map(function (b) {
+      const v = (b < 0 ? b + 256 : b).toString(16);
+      return v.length === 1 ? '0' + v : v;
+    }).join('');
+  }
+  return digest;
+}
+
+function verifySecret_(secret, salt, expectedHash) {
+  return Boolean(secret && salt && expectedHash && hashSecret_(secret, salt) === expectedHash);
+}
+
+function checkRateLimit_(bucketKey, maxHits, windowSeconds) {
+  const cache = CacheService.getScriptCache();
+  const key = 'RL_' + Utilities.base64Encode(bucketKey).slice(0, 40);
+  const current = Number(cache.get(key) || '0');
+  if (current >= maxHits) throw createApiError_('RATE_LIMITED', 'Too many requests. Please wait a few minutes and try again.');
+  cache.put(key, String(current + 1), windowSeconds);
+}
+
+function createSession_(user) {
+  const token = Utilities.getUuid() + '.' + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+  const expiresAt = Date.now() + (APP_CONSTANTS.TOKEN_TTL_SECONDS * 1000);
+  const sessionObj = {
+    userId: user.UserId, email: user.Email, role: user.Role,
+    linkedEntityId: user.LinkedEntityId || '', expiresAt: expiresAt
+  };
+  CacheService.getScriptCache().put('SES_' + token, JSON.stringify(sessionObj), 21600);
+  const props = PropertiesService.getScriptProperties();
+  let map = {};
+  try { map = JSON.parse(props.getProperty(APP_CONSTANTS.PROP_SESSIONS) || '{}'); } catch (e) { map = {}; }
+  const now = Date.now();
+  Object.keys(map).forEach(function (k) { if (!map[k] || map[k].expiresAt < now) delete map[k]; });
+  const keys = Object.keys(map);
+  if (keys.length > 80) {
+    keys.sort(function (a, b) { return map[a].expiresAt - map[b].expiresAt; });
+    for (let i = 0; i < keys.length - 80; i++) delete map[keys[i]];
+  }
+  map[token] = sessionObj;
+  props.setProperty(APP_CONSTANTS.PROP_SESSIONS, JSON.stringify(map));
+  return token;
+}
+
+function validateSession_(token, requiredRoles) {
+  if (!token || typeof token !== 'string') throw createApiError_('UNAUTHORIZED', 'Authentication required. Please log in.');
+  let sessionObj = null;
+  const cached = CacheService.getScriptCache().get('SES_' + token);
+  if (cached) { try { sessionObj = JSON.parse(cached); } catch (e) {} }
+  if (!sessionObj) {
+    try {
+      const map = JSON.parse(PropertiesService.getScriptProperties().getProperty(APP_CONSTANTS.PROP_SESSIONS) || '{}');
+      sessionObj = map[token] || null;
+    } catch (e) {}
+  }
+  if (!sessionObj || sessionObj.expiresAt < Date.now()) throw createApiError_('UNAUTHORIZED', 'Session expired. Please log in again.');
+  if (requiredRoles && requiredRoles.length > 0 && requiredRoles.indexOf(sessionObj.role) === -1) {
+    throw createApiError_('FORBIDDEN', 'You do not have permission to perform this action.');
+  }
+  return sessionObj;
+}
+
+function destroySession_(token) {
+  if (!token) return;
+  CacheService.getScriptCache().remove('SES_' + token);
+  const props = PropertiesService.getScriptProperties();
+  try {
+    const map = JSON.parse(props.getProperty(APP_CONSTANTS.PROP_SESSIONS) || '{}');
+    if (map[token]) { delete map[token]; props.setProperty(APP_CONSTANTS.PROP_SESSIONS, JSON.stringify(map)); }
+  } catch (e) {}
+}
+
+function provisionPortalUser_(email, role, linkedEntityId) {
+  const normEmail = String(email || '').toLowerCase().trim();
+  if (!isValidEmail_(normEmail)) return null;
+  const existing = findRowByField_('Users', 'Email', normEmail, true);
+  const now = nowIso_();
+  if (existing) {
+    if (existing.AuthStatus === 'DISABLED') updateRowByKey_('Users', 'UserId', existing.UserId, { AuthStatus: 'ACTIVE', UpdatedAt: now });
+    return existing;
+  }
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const salt = generateSalt_();
+  const userObj = {
+    UserId: generateId_('Users', 'USR'), Email: normEmail, Role: role, LinkedEntityId: linkedEntityId,
+    PasswordHash: '', PasswordSalt: salt, AuthStatus: 'PENDING_ACTIVATION',
+    OtpHash: hashSecret_(otp, salt), OtpExpiresAt: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
+    FailedAttempts: 0, LastLoginAt: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('Users', userObj);
+  sendNotificationEmail_(
+    role, linkedEntityId, normEmail, 'PORTAL_INVITE',
+    'Welcome to TutorSync — Activate Your Portal Account',
+    '<p>Hello,</p><p>Your TutorSync profile has been verified. You can now activate your portal account.</p>' +
+    '<p><b>Registered Email:</b> ' + escapeHtml_(normEmail) + '<br><b>Activation Code:</b> ' + otp + '</p>' +
+    '<p>Open TutorSync Portal Login → <b>Activate / Reset</b> and enter this code.</p>',
+    null, null, 'HIGH'
+  );
+  return userObj;
+}
+
+/* ============================================================================
+ * 4. API ROUTER
+ * ============================================================================ */
+
+function createApiError_(code, message) {
+  const err = new Error(message);
+  err.apiCode = code;
+  return err;
+}
+
+function jsonResponse_(ok, code, message, data) {
+  return ContentService.createTextOutput(JSON.stringify({
+    ok: ok, code: code, message: message, data: data !== undefined ? data : null, timestamp: nowIso_()
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) ? String(e.parameter.action) : 'health';
+    if (action === 'health') return jsonResponse_(true, 'SUCCESS', 'TutorSync API is operational.', { status: 'OK' });
+    if (action === 'getPublicConfig') return jsonResponse_(true, 'SUCCESS', 'Public configuration loaded.', handleGetPublicConfig_());
+    return jsonResponse_(false, 'FORBIDDEN', 'Unsupported GET action.');
+  } catch (err) {
+    return jsonResponse_(false, err.apiCode || 'INTERNAL_ERROR', err.message || 'Server error.');
+  }
+}
+
+function doPost(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) throw createApiError_('VALIDATION_ERROR', 'Empty request body.');
+    let body;
+    try { body = JSON.parse(e.postData.contents); } catch (err) { throw createApiError_('VALIDATION_ERROR', 'Invalid JSON payload.'); }
+    const action = cleanStr_(body.action, 64);
+    const token = body.sessionToken || '';
+    const payload = body.payload || {};
+    if (!action) throw createApiError_('VALIDATION_ERROR', 'Missing API action.');
+    const result = routeApiAction_(action, token, payload);
+    return jsonResponse_(true, 'SUCCESS', result && result._msg ? result._msg : 'Success', result && result._msg ? result.data : result);
+  } catch (err) {
+    Logger.log('API Error: ' + err.message);
+    return jsonResponse_(false, err.apiCode || 'INTERNAL_ERROR', err.message || 'Unexpected server error.');
+  }
+}
+
+function withLock_(fn) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) throw createApiError_('INTERNAL_ERROR', 'System busy with another transaction. Please retry.');
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+function routeApiAction_(action, token, payload) {
+  // Public Endpoints
+  if (action === 'getPublicConfig') return handleGetPublicConfig_();
+  if (action === 'publicGetDirectory') return handlePublicGetDirectory_();
+  if (action === 'publicRegisterStudent') return withLock_(function () { return handlePublicRegisterStudent_(payload); });
+  if (action === 'publicRegisterTutor') return withLock_(function () { return handlePublicRegisterTutor_(payload); });
+  if (action === 'publicSubmitContact') return withLock_(function () { return handlePublicSubmitContact_(payload); });
+  if (action === 'authLogin') return withLock_(function () { return handleAuthLogin_(payload); });
+  if (action === 'authRequestOtp') return withLock_(function () { return handleAuthRequestOtp_(payload); });
+  if (action === 'authActivateAccount') return withLock_(function () { return handleAuthActivateAccount_(payload); });
+  if (action === 'authLogout') { destroySession_(token); return { loggedOut: true }; }
+
+  // Student Portal Endpoints
+  if (action.indexOf('student') === 0) {
+    const session = validateSession_(token, ['STUDENT']);
+    if (action === 'studentGetDashboard') return handleStudentDashboard_(session);
+    if (action === 'studentConfirmAssignment') return withLock_(function () { return handleParticipantConfirmAssignment_(session, payload); });
+    if (action === 'studentConfirmSession') return withLock_(function () { return handleStudentConfirmSession_(session, payload); });
+    if (action === 'studentGetInvoices') return handleStudentInvoices_(session);
+    if (action === 'studentSubmitPaymentClaim') return withLock_(function () { return handleStudentSubmitPaymentClaim_(session, payload); });
+    if (action === 'studentGetPayments') return handleStudentPayments_(session);
+    if (action === 'studentCreateTicket') return withLock_(function () { return handlePortalCreateTicket_(session, payload); });
+    if (action === 'studentGetTickets') return handlePortalGetTickets_(session);
+  }
+
+  // Tutor Portal Endpoints
+  if (action.indexOf('tutor') === 0) {
+    const session = validateSession_(token, ['TUTOR']);
+    if (action === 'tutorGetDashboard') return handleTutorDashboard_(session);
+    if (action === 'tutorUpdatePayoutProfile') return withLock_(function () { return handleTutorUpdatePayoutProfile_(session, payload); });
+    if (action === 'tutorGetOpenOpportunities') return handleTutorOpportunities_(session);
+    if (action === 'tutorExpressInterest') return withLock_(function () { return handleTutorExpressInterest_(session, payload); });
+    if (action === 'tutorConfirmAssignment') return withLock_(function () { return handleParticipantConfirmAssignment_(session, payload); });
+    if (action === 'tutorLogSession') return withLock_(function () { return handleTutorLogSession_(session, payload); });
+    if (action === 'tutorGetEarnings') return handleTutorEarnings_(session);
+    if (action === 'tutorCreateTicket') return withLock_(function () { return handlePortalCreateTicket_(session, payload); });
+    if (action === 'tutorGetTickets') return handlePortalGetTickets_(session);
+  }
+
+  // Administrator Endpoints
+  if (action.indexOf('admin') === 0) {
+    const session = validateSession_(token, ['ADMIN']);
+    if (action === 'adminGetDashboard') return handleAdminDashboard_();
+    if (action === 'adminGetCriticalGates') return handleAdminGetCriticalGates_();
+    if (action === 'adminReviewPaymentClaim') return withLock_(function () { return handleAdminReviewPaymentClaim_(session, payload); });
+    if (action === 'adminListStudents') return handleAdminListEntities_('Students', payload);
+    if (action === 'adminSaveStudent') return withLock_(function () { return handleAdminSaveStudent_(session, payload); });
+    if (action === 'adminVerifyStudent') return withLock_(function () { return handleAdminVerifyParticipant_(session, 'Students', payload); });
+    if (action === 'adminSoftDeleteStudent') return withLock_(function () { return handleAdminSoftDelete_(session, 'Students', 'StudentId', payload); });
+    if (action === 'adminListTutors') return handleAdminListEntities_('Tutors', payload);
+    if (action === 'adminSaveTutor') return withLock_(function () { return handleAdminSaveTutor_(session, payload); });
+    if (action === 'adminVerifyTutor') return withLock_(function () { return handleAdminVerifyParticipant_(session, 'Tutors', payload); });
+    if (action === 'adminSoftDeleteTutor') return withLock_(function () { return handleAdminSoftDelete_(session, 'Tutors', 'TutorId', payload); });
+    if (action === 'adminRunMatching') return handleAdminRunMatching_(payload);
+    if (action === 'adminListMatches') return handleAdminListMatches_(payload);
+    if (action === 'adminSaveMatchAction') return withLock_(function () { return handleAdminSaveMatchAction_(session, payload); });
+    if (action === 'adminListAssignments') return handleAdminListAssignments_(payload);
+    if (action === 'adminSaveAssignment') return withLock_(function () { return handleAdminSaveAssignment_(session, payload); });
+    if (action === 'adminUpdateAssignmentStatus') return withLock_(function () { return handleAdminUpdateAssignmentStatus_(session, payload); });
+    if (action === 'adminUpdateTrialStatus') return withLock_(function () { return handleAdminUpdateTrialStatus_(session, payload); });
+    if (action === 'adminListSessions') return handleAdminListSessions_(payload);
+    if (action === 'adminGenerateSessions') return withLock_(function () { return handleAdminGenerateSessions_(session, payload); });
+    if (action === 'adminSaveSession') return withLock_(function () { return handleAdminSaveSession_(session, payload); });
+    if (action === 'adminListInvoices') return handleAdminListInvoices_(payload);
+    if (action === 'adminGenerateMonthlyInvoices') return withLock_(function () { return handleAdminGenerateMonthlyInvoices_(session, payload); });
+    if (action === 'adminCreateManualInvoice') return withLock_(function () { return handleAdminCreateManualInvoice_(session, payload); });
+    if (action === 'adminAdjustInvoice') return withLock_(function () { return handleAdminAdjustInvoice_(session, payload); });
+    if (action === 'adminVoidInvoice') return withLock_(function () { return handleAdminVoidInvoice_(session, payload); });
+    if (action === 'adminResendInvoiceEmail') return withLock_(function () { return handleAdminResendInvoiceEmail_(session, payload); });
+    if (action === 'adminListPayments') return handleAdminListPayments_(payload);
+    if (action === 'adminRecordPayment') return withLock_(function () { return handleAdminRecordPayment_(session, payload); });
+    if (action === 'adminRecordRefund') return withLock_(function () { return handleAdminRecordRefund_(session, payload); });
+    if (action === 'adminListTutorLedger') return handleAdminListTutorLedger_(payload);
+    if (action === 'adminAddTutorAdjustment') return withLock_(function () { return handleAdminAddTutorAdjustment_(session, payload); });
+    if (action === 'adminListPayouts') return handleAdminListPayouts_(payload);
+    if (action === 'adminCreatePayoutBatch') return withLock_(function () { return handleAdminCreatePayoutBatch_(session, payload); });
+    if (action === 'adminApprovePayout') return withLock_(function () { return handleAdminApprovePayout_(session, payload); });
+    if (action === 'adminMarkPayoutPaid') return withLock_(function () { return handleAdminMarkPayoutPaid_(session, payload); });
+    if (action === 'adminListNotifications') return handleAdminListNotifications_();
+    if (action === 'adminSendManualNotification') return withLock_(function () { return handleAdminSendManualNotification_(session, payload); });
+    if (action === 'adminGetTickets') return handleAdminListEntities_('SupportTickets', payload);
+    if (action === 'adminResolveTicket') return withLock_(function () { return handleAdminResolveTicket_(session, payload); });
+    if (action === 'adminGetReportData') return handleAdminGetReport_(payload);
+    if (action === 'adminGetSettings') return getAllRows_('Settings', true);
+    if (action === 'adminUpdateSettings') return withLock_(function () { return handleAdminUpdateSettings_(session, payload); });
+    if (action === 'adminGetAuditLogs') return handleAdminGetAuditLogs_(payload);
+    if (action === 'adminRunTriggerManual') return handleAdminRunTriggerManual_(session, payload);
+    if (action === 'adminInstallTriggers') {
+      const res = installTriggers();
+      writeAudit_(session.userId, 'ADMIN', 'TRIGGERS_INSTALLED', 'System', 'TRIGGERS', null, res, 'Manual trigger sync');
+      return res;
+    }
+  }
+
+  throw createApiError_('NOT_FOUND', 'Unknown or unauthorized API action: ' + action);
+}
+
+/* ============================================================================
+ * 5. PUBLIC DIRECTORY, REGISTRATION & AUTH HANDLERS
+ * ============================================================================ */
+
+function handleGetPublicConfig_() {
+  const settings = getSettingsMap_();
+  return {
+    appName: APP_CONSTANTS.APP_NAME,
+    boards: APP_CONSTANTS.BOARDS,
+    modes: APP_CONSTANTS.MODES,
+    classes: APP_CONSTANTS.CLASSES,
+    subjects: APP_CONSTANTS.SUBJECTS,
+    supportEmail: settings.SUPPORT_EMAIL || '',
+    supportWhatsApp: settings.SUPPORT_WHATSAPP || '',
+    privacyVersion: settings.PRIVACY_VERSION || '1.1'
+  };
+}
+
+function handlePublicGetDirectory_() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('TS_PUBLIC_DIR_V1');
+  if (cached) { try { return JSON.parse(cached); } catch (e) {} }
+
+  const assignedStudentIds = {};
+  getAllRows_('Assignments', false).forEach(function (a) {
+    if (a.Status === 'ACTIVE') assignedStudentIds[a.StudentId] = true;
+  });
+
+  const tutors = getAllRows_('Tutors', false)
+    .filter(function (t) { return t.Status === 'VERIFIED' || t.Status === 'ACTIVE'; })
+    .map(function (t) {
+      return {
+        refCode: t.TutorId,
+        qualifications: cleanStr_(t.Qualifications, 80),
+        experienceYears: Number(t.ExperienceYears || 0),
+        subjects: parseListField_(t.Subjects),
+        classesGrades: parseListField_(t.ClassesGrades),
+        boardExpertise: parseListField_(t.BoardExpertise),
+        teachingMode: t.TeachingMode,
+        generalArea: t.TeachingMode === 'ONLINE'
+          ? 'Online'
+          : (cleanStr_(t.PreferredLocations, 45) || parseListField_(t.PinCodes).slice(0, 2).join(', ')),
+        expectedMonthlyFee: Number(t.ExpectedMonthlyFee || 0),
+        shortBio: cleanStr_(t.ShortBio, 130)
+      };
+    }).reverse();
+
+  const students = getAllRows_('Students', false)
+    .filter(function (s) { return (s.Status === 'VERIFIED' || s.Status === 'ACTIVE') && !assignedStudentIds[s.StudentId]; })
+    .map(function (s) {
+      return {
+        refCode: s.StudentId,
+        classGrade: s.ClassGrade,
+        board: s.Board,
+        subjects: parseListField_(s.SubjectsRequired),
+        teachingMode: s.TeachingMode,
+        generalArea: s.TeachingMode === 'ONLINE'
+          ? 'Online'
+          : ((s.AreaLocality ? String(s.AreaLocality).split(',')[0].trim() : '') + (s.PinCode ? ' - ' + s.PinCode : '')),
+        preferredDays: parseListField_(s.PreferredDays),
+        preferredTime: cleanStr_(s.PreferredTime, 50),
+        budgetPerMonth: Number(s.BudgetPerMonth || 0)
+      };
+    }).reverse();
+
+  const result = { tutors: tutors, students: students };
+  try { cache.put('TS_PUBLIC_DIR_V1', JSON.stringify(result), 120); } catch (e) {}
+  return result;
+}
+
+function handlePublicRegisterStudent_(p) {
+  if (cleanStr_(p.websiteTrap, 50) !== '') return { studentId: 'STU-RECEIVED', status: 'NEW' };
+  const phone = normalizePhone_(p.phone);
+  const whatsapp = normalizePhone_(p.whatsapp || p.phone);
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  const name = cleanStr_(p.name, 100);
+  const mode = cleanStr_(p.teachingMode, 20).toUpperCase();
+
+  checkRateLimit_('REG_STU_' + phone, 4, 3600);
+  if (name.length < 2) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid Student/Parent name.');
+  if (!isValidIndianPhone_(phone)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid 10-digit Indian mobile number (starts with 6-9).');
+  if (!isValidIndianPhone_(whatsapp)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid 10-digit WhatsApp number.');
+  if (!isValidEmail_(email)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid email address.');
+  if (!cleanStr_(p.classGrade, 50)) throw createApiError_('VALIDATION_ERROR', 'Please select the student class/grade.');
+  if (!cleanStr_(p.board, 40)) throw createApiError_('VALIDATION_ERROR', 'Please select an education board.');
+  const subjects = parseListField_(p.subjectsRequired);
+  if (subjects.length === 0) throw createApiError_('VALIDATION_ERROR', 'Please specify at least one subject.');
+  if (APP_CONSTANTS.MODES.indexOf(mode) === -1) throw createApiError_('VALIDATION_ERROR', 'Please select a valid teaching mode.');
+  if (mode !== 'ONLINE') {
+    if (!cleanStr_(p.areaLocality, 120)) throw createApiError_('VALIDATION_ERROR', 'Area/locality is required for Offline or Hybrid tuition.');
+    if (!isValidPin_(p.pinCode)) throw createApiError_('VALIDATION_ERROR', 'A valid 6-digit PIN code is required for Offline or Hybrid tuition.');
+  }
+  const budget = Number(p.budgetPerMonth);
+  if (!budget || budget <= 0) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid monthly budget.');
+  if (p.consentAccepted !== true) throw createApiError_('VALIDATION_ERROR', 'Privacy consent is required.');
+
+  const existing = getAllRows_('Students', false).filter(function (s) {
+    return normalizePhone_(s.Phone) === phone && s.Status !== 'REJECTED' && s.Status !== 'INACTIVE';
+  });
+  if (existing.length > 0) throw createApiError_('DUPLICATE_ERROR', 'An active registration already exists for this phone (' + existing[0].StudentId + ').');
+
+  const now = nowIso_();
+  const studentId = generateId_('Students', 'STU');
+  const record = {
+    StudentId: studentId, ParentOrStudentName: name, Phone: phone, WhatsApp: whatsapp, Email: email,
+    ClassGrade: cleanStr_(p.classGrade, 50), Board: cleanStr_(p.board, 40),
+    BoardOther: p.board === 'OTHER' ? cleanStr_(p.boardOther, 60) : '',
+    SubjectsRequired: JSON.stringify(subjects),
+    PreferredTutorGender: cleanStr_(p.preferredTutorGender || 'ANY', 20).toUpperCase(),
+    TeachingMode: mode, AreaLocality: cleanStr_(p.areaLocality, 120), PinCode: cleanStr_(p.pinCode, 10),
+    PreferredDays: JSON.stringify(parseListField_(p.preferredDays)), PreferredTime: cleanStr_(p.preferredTime, 80),
+    BudgetPerMonth: Math.round(budget), PreferredStartDate: cleanStr_(p.preferredStartDate, 20),
+    AdditionalNotes: cleanStr_(p.additionalNotes, 1000),
+    ConsentAccepted: true, ConsentTimestamp: now, Status: 'NEW', VerificationNotes: '',
+    VerifiedBy: '', VerifiedAt: '', IsDeleted: false, DeletedAt: '', DeletedBy: '',
+    CreatedAt: now, UpdatedAt: now, ProfileScore: 0
+  };
+  record.ProfileScore = computeStudentProfileScore_(record);
+  appendRow_('Students', record);
+  writeAudit_('PUBLIC_FORM', 'PUBLIC', 'STUDENT_REGISTERED', 'Students', studentId, null, record, 'Public registration');
+
+  sendNotificationEmail_('STUDENT', studentId, email, 'REGISTRATION_CONFIRMATION',
+    'TutorSync Registration Received — ' + studentId,
+    '<p>Dear ' + escapeHtml_(name) + ',</p><p>Thank you for registering with TutorSync. Your Student Reference ID is <b>' + studentId + '</b>.</p><p>Our team will review your requirements and notify you once verified.</p>',
+    null, null, 'HIGH'
+  );
+  notifyAdmin_('New Student: ' + studentId + ' (' + record.ProfileScore + '% complete)',
+    '<p><b>Name:</b> ' + escapeHtml_(name) + '<br><b>Class:</b> ' + escapeHtml_(record.ClassGrade) + ' (' + escapeHtml_(record.Board) + ')<br><b>Subjects:</b> ' + escapeHtml_(subjects.join(', ')) + '<br><b>Budget:</b> ₹' + record.BudgetPerMonth + '</p>'
+  );
+  return { studentId: studentId, status: 'NEW', profileScore: record.ProfileScore };
+}
+
+function handlePublicRegisterTutor_(p) {
+  if (cleanStr_(p.websiteTrap, 50) !== '') return { tutorId: 'TUT-RECEIVED', status: 'NEW' };
+  const phone = normalizePhone_(p.phone);
+  const whatsapp = normalizePhone_(p.whatsapp || p.phone);
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  const fullName = cleanStr_(p.fullName, 100);
+  const mode = cleanStr_(p.teachingMode, 20).toUpperCase();
+
+  checkRateLimit_('REG_TUT_' + phone, 4, 3600);
+  if (fullName.length < 2) throw createApiError_('VALIDATION_ERROR', 'Please enter your full name.');
+  if (!isValidIndianPhone_(phone)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid 10-digit Indian mobile number (starts with 6-9).');
+  if (!isValidIndianPhone_(whatsapp)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid 10-digit WhatsApp number.');
+  if (!isValidEmail_(email)) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid email address.');
+  if (!cleanStr_(p.qualifications, 200)) throw createApiError_('VALIDATION_ERROR', 'Qualifications are required.');
+  const exp = Number(p.experienceYears);
+  if (isNaN(exp) || exp < 0) throw createApiError_('VALIDATION_ERROR', 'Valid teaching experience is required.');
+  const subjects = parseListField_(p.subjects);
+  const classes = parseListField_(p.classesGrades);
+  const boards = parseListField_(p.boardExpertise);
+  if (!subjects.length || !classes.length || !boards.length) throw createApiError_('VALIDATION_ERROR', 'Subjects, classes/grades, and board expertise are required.');
+  if (APP_CONSTANTS.MODES.indexOf(mode) === -1) throw createApiError_('VALIDATION_ERROR', 'Please select a valid teaching mode.');
+  const pins = parseListField_(p.pinCodes);
+  if (mode !== 'ONLINE' && !cleanStr_(p.preferredLocations, 200) && pins.length === 0) {
+    throw createApiError_('VALIDATION_ERROR', 'Preferred locations or PIN codes are required for Offline/Hybrid mode.');
+  }
+  const expectedFee = Number(p.expectedMonthlyFee);
+  if (!expectedFee || expectedFee <= 0) throw createApiError_('VALIDATION_ERROR', 'Expected monthly tuition fee must be positive.');
+  if (p.consentAccepted !== true) throw createApiError_('VALIDATION_ERROR', 'Privacy consent is required.');
+
+  const existing = getAllRows_('Tutors', false).filter(function (t) {
+    return normalizePhone_(t.Phone) === phone && t.Status !== 'REJECTED' && t.Status !== 'INACTIVE';
+  });
+  if (existing.length > 0) throw createApiError_('DUPLICATE_ERROR', 'A tutor profile already exists for this phone (' + existing[0].TutorId + ').');
+
+  let documentUrl = cleanStr_(p.documentUrl, 400);
+  if (p.documentBase64 && p.documentFileName) {
+    documentUrl = saveTutorUploadToDrive_(p.documentBase64, p.documentFileName, p.documentMimeType, phone);
+  }
+
+  const now = nowIso_();
+  const tutorId = generateId_('Tutors', 'TUT');
+  const record = {
+    TutorId: tutorId, FullName: fullName, Phone: phone, WhatsApp: whatsapp, Email: email,
+    Gender: cleanStr_(p.gender || 'PREFER_NOT_TO_SAY', 30).toUpperCase(),
+    Qualifications: cleanStr_(p.qualifications, 250), ExperienceYears: exp,
+    Subjects: JSON.stringify(subjects), ClassesGrades: JSON.stringify(classes), BoardExpertise: JSON.stringify(boards),
+    TeachingMode: mode, PreferredLocations: cleanStr_(p.preferredLocations, 250), PinCodes: JSON.stringify(pins),
+    MaxTravelDistanceKm: Number(p.maxTravelDistanceKm || 0),
+    AvailabilityDays: JSON.stringify(parseListField_(p.availabilityDays)), PreferredTiming: cleanStr_(p.preferredTiming, 100),
+    ExpectedMonthlyFee: Math.round(expectedFee), CurrentStudentCount: Math.max(0, Number(p.currentStudentCount || 0)),
+    Languages: JSON.stringify(parseListField_(p.languages)), ShortBio: cleanStr_(p.shortBio, 1000),
+    DocumentUrl: documentUrl, ConsentAccepted: true, ConsentTimestamp: now, Status: 'NEW',
+    VerificationNotes: '', VerifiedBy: '', VerifiedAt: '', IsDeleted: false, DeletedAt: '', DeletedBy: '',
+    CreatedAt: now, UpdatedAt: now, ProfileScore: 0, UpiId: cleanStr_(p.upiId, 80), BankAccountMasked: ''
+  };
+  record.ProfileScore = computeTutorProfileScore_(record);
+  appendRow_('Tutors', record);
+  writeAudit_('PUBLIC_FORM', 'PUBLIC', 'TUTOR_REGISTERED', 'Tutors', tutorId, null, record, 'Public registration');
+
+  sendNotificationEmail_('TUTOR', tutorId, email, 'REGISTRATION_CONFIRMATION',
+    'TutorSync Tutor Application Received — ' + tutorId,
+    '<p>Dear ' + escapeHtml_(fullName) + ',</p><p>Thank you for applying to teach with TutorSync. Your Tutor ID is <b>' + tutorId + '</b>.</p><p>Your application is queued for our verification gate. You will receive portal activation instructions once verified.</p>',
+    null, null, 'HIGH'
+  );
+  notifyAdmin_('New Tutor Gate: ' + tutorId + ' (' + record.ProfileScore + '% complete)',
+    '<p><b>Tutor:</b> ' + escapeHtml_(fullName) + '<br><b>Qual:</b> ' + escapeHtml_(record.Qualifications) + '<br><b>Subjects:</b> ' + escapeHtml_(subjects.join(', ')) + '<br><b>Expected Fee:</b> ₹' + record.ExpectedMonthlyFee + '</p>'
+  );
+  return { tutorId: tutorId, status: 'NEW', profileScore: record.ProfileScore };
+}
+
+function saveTutorUploadToDrive_(base64Data, fileName, mimeType, identifier) {
+  const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png'];
+  if (allowedMimes.indexOf(mimeType) === -1) throw createApiError_('VALIDATION_ERROR', 'Only PDF, JPG, or PNG files are allowed.');
+  const cleanB64 = String(base64Data).replace(/^data:[^;]+;base64,/, '');
+  const bytes = Utilities.base64Decode(cleanB64);
+  if (bytes.length > 1600000) throw createApiError_('VALIDATION_ERROR', 'Credential file size must not exceed 1.5 MB.');
+  const settings = getSettingsMap_();
+  const folder = DriveApp.getFolderById(settings.DRIVE_DOCS_FOLDER_ID);
+  const safeName = identifier + '_' + cleanStr_(fileName, 60).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const file = folder.createFile(Utilities.newBlob(bytes, mimeType, safeName));
+  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  return file.getUrl();
+}
+
+function handlePublicSubmitContact_(p) {
+  const name = cleanStr_(p.name, 100);
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  const message = cleanStr_(p.message, 1500);
+  if (!name || !isValidEmail_(email) || message.length < 5) throw createApiError_('VALIDATION_ERROR', 'Name, valid email, and message are required.');
+  checkRateLimit_('CONTACT_' + email, 5, 3600);
+  const now = nowIso_();
+  const ticketId = generateId_('SupportTickets', 'TKT');
+  appendRow_('SupportTickets', {
+    TicketId: ticketId, RaisedByRole: 'PUBLIC', LinkedEntityId: '', ContactName: name,
+    ContactEmail: email, ContactPhone: normalizePhone_(p.phone || ''),
+    Category: cleanStr_(p.category || 'GENERAL', 30).toUpperCase(),
+    Subject: cleanStr_(p.subject || 'Public Inquiry', 150), Description: message,
+    AssignmentId: '', Status: 'OPEN', AdminResponse: '', ResolvedBy: '', ResolvedAt: '',
+    IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  });
+  notifyAdmin_('New Support Inquiry: ' + ticketId, '<p><b>From:</b> ' + escapeHtml_(name) + ' (' + escapeHtml_(email) + ')<br><b>Message:</b> ' + escapeHtml_(message) + '</p>');
+  return { ticketId: ticketId };
+}
+
+function handleAuthRequestOtp_(p) {
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  if (!isValidEmail_(email)) throw createApiError_('VALIDATION_ERROR', 'Enter a valid email address.');
+  checkRateLimit_('OTP_' + email, 3, 900);
+  const user = findRowByField_('Users', 'Email', email, true);
+  if (!user || user.AuthStatus === 'DISABLED') return { sent: true, message: 'If an eligible account exists, a verification code has been sent.' };
+
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const salt = user.PasswordSalt || generateSalt_();
+  updateRowByKey_('Users', 'UserId', user.UserId, {
+    PasswordSalt: salt, OtpHash: hashSecret_(otp, salt),
+    OtpExpiresAt: new Date(Date.now() + APP_CONSTANTS.OTP_TTL_SECONDS * 1000).toISOString(),
+    FailedAttempts: 0, UpdatedAt: nowIso_()
+  });
+  sendNotificationEmail_(user.Role, user.LinkedEntityId || user.UserId, email, 'LOGIN_OTP',
+    'TutorSync Verification Code: ' + otp,
+    '<p>Your TutorSync one-time verification code is: <b>' + otp + '</b></p><p>Expires in 15 minutes.</p>',
+    null, null, 'HIGH'
+  );
+  return { sent: true, message: 'If an eligible account exists, a verification code has been sent.' };
+}
+
+function handleAuthActivateAccount_(p) {
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  const otp = cleanStr_(p.otp, 10);
+  const newPassword = String(p.newPassword || '');
+  if (!isValidEmail_(email) || !otp || newPassword.length < 8) throw createApiError_('VALIDATION_ERROR', 'Email, code, and password (min 8 chars) required.');
+  const user = findRowByField_('Users', 'Email', email, true);
+  if (!user || user.AuthStatus === 'DISABLED') throw createApiError_('UNAUTHORIZED', 'Invalid account or code.');
+  if (!user.OtpExpiresAt || new Date(user.OtpExpiresAt).getTime() < Date.now()) throw createApiError_('UNAUTHORIZED', 'Verification code expired.');
+  if (!verifySecret_(otp, user.PasswordSalt, user.OtpHash)) {
+    const fails = Number(user.FailedAttempts || 0) + 1;
+    updateRowByKey_('Users', 'UserId', user.UserId, { FailedAttempts: fails, AuthStatus: fails >= APP_CONSTANTS.MAX_LOGIN_ATTEMPTS ? 'LOCKED' : user.AuthStatus, UpdatedAt: nowIso_() });
+    throw createApiError_('UNAUTHORIZED', 'Invalid verification code.');
+  }
+  const newSalt = generateSalt_();
+  const updated = updateRowByKey_('Users', 'UserId', user.UserId, {
+    PasswordSalt: newSalt, PasswordHash: hashSecret_(newPassword, newSalt),
+    OtpHash: '', OtpExpiresAt: '', FailedAttempts: 0, AuthStatus: 'ACTIVE', LastLoginAt: nowIso_(), UpdatedAt: nowIso_()
+  });
+  writeAudit_(user.UserId, user.Role, 'ACCOUNT_ACTIVATED', 'Users', user.UserId, null, { email: email }, 'Password set via OTP');
+  return {
+    sessionToken: createSession_(updated),
+    user: { userId: updated.UserId, email: updated.Email, role: updated.Role, linkedEntityId: updated.LinkedEntityId }
+  };
+}
+
+function handleAuthLogin_(p) {
+  const email = cleanStr_(p.email, 120).toLowerCase();
+  const password = String(p.password || '');
+  const otp = cleanStr_(p.otp, 10);
+  if (!isValidEmail_(email) || (!password && !otp)) throw createApiError_('VALIDATION_ERROR', 'Email and password (or OTP) are required.');
+  checkRateLimit_('LOGIN_' + email, 10, 600);
+
+  const user = findRowByField_('Users', 'Email', email, true);
+  if (!user) throw createApiError_('UNAUTHORIZED', 'Invalid email or credentials.');
+  if (user.AuthStatus === 'DISABLED') throw createApiError_('FORBIDDEN', 'Account is disabled.');
+  if (user.AuthStatus === 'LOCKED') throw createApiError_('FORBIDDEN', 'Account locked. Request an OTP under Activate / Reset.');
+
+  let valid = false;
+  if (otp) {
+    if (user.OtpExpiresAt && new Date(user.OtpExpiresAt).getTime() >= Date.now()) valid = verifySecret_(otp, user.PasswordSalt, user.OtpHash);
+  } else {
+    if (user.AuthStatus === 'PENDING_ACTIVATION' || !user.PasswordHash) throw createApiError_('UNAUTHORIZED', 'Account not activated yet. Use Activate / Reset.');
+    valid = verifySecret_(password, user.PasswordSalt, user.PasswordHash);
+  }
+
+  if (!valid) {
+    const fails = Number(user.FailedAttempts || 0) + 1;
+    updateRowByKey_('Users', 'UserId', user.UserId, { FailedAttempts: fails, AuthStatus: fails >= APP_CONSTANTS.MAX_LOGIN_ATTEMPTS ? 'LOCKED' : user.AuthStatus, UpdatedAt: nowIso_() });
+    throw createApiError_('UNAUTHORIZED', 'Invalid credentials.');
+  }
+
+  const upd = { FailedAttempts: 0, LastLoginAt: nowIso_(), UpdatedAt: nowIso_() };
+  if (otp) { upd.OtpHash = ''; upd.OtpExpiresAt = ''; if (user.AuthStatus === 'PENDING_ACTIVATION') upd.AuthStatus = 'ACTIVE'; }
+  const updated = updateRowByKey_('Users', 'UserId', user.UserId, upd);
+  return {
+    sessionToken: createSession_(updated),
+    user: { userId: updated.UserId, email: updated.Email, role: updated.Role, linkedEntityId: updated.LinkedEntityId }
+  };
+}
+
+/* ============================================================================
+ * 6. MATCHING ENGINE & AUTOPILOT MATCH OUTREACH
+ * ============================================================================ */
+
+function computeMatchScore_(student, tutor) {
+  const sSubjects = parseListField_(student.SubjectsRequired).map(function (s) { return s.toLowerCase(); });
+  const tSubjects = parseListField_(tutor.Subjects).map(function (s) { return s.toLowerCase(); });
+  const tClasses = parseListField_(tutor.ClassesGrades).map(function (s) { return s.toLowerCase(); });
+  const tBoards = parseListField_(tutor.BoardExpertise).map(function (s) { return s.toLowerCase(); });
+  const sDays = parseListField_(student.PreferredDays).map(function (s) { return s.toLowerCase(); });
+  const tDays = parseListField_(tutor.AvailabilityDays).map(function (s) { return s.toLowerCase(); });
+  const tPins = parseListField_(tutor.PinCodes);
+
+  let matchedSubjects = 0;
+  if (tSubjects.indexOf('all subjects') !== -1) matchedSubjects = sSubjects.length;
+  else sSubjects.forEach(function (sub) { if (tSubjects.indexOf(sub) !== -1) matchedSubjects++; });
+  const subjectScore = sSubjects.length > 0 ? round2_(30 * (matchedSubjects / sSubjects.length)) : 0;
+
+  const sClass = String(student.ClassGrade || '').toLowerCase();
+  let classScore = 0;
+  if (tClasses.indexOf(sClass) !== -1) classScore = 15;
+  else if (tClasses.some(function (c) { return c.indexOf('all') !== -1 || (sClass.indexOf('11') !== -1 && c.indexOf('11') !== -1) || (sClass.indexOf('12') !== -1 && c.indexOf('12') !== -1); })) classScore = 12;
+
+  const sBoard = String(student.Board || '').toLowerCase();
+  const boardScore = (tBoards.indexOf(sBoard) !== -1) ? 10 : 0;
+
+  let locationScore = 0;
+  const sMode = String(student.TeachingMode || '').toUpperCase();
+  const tMode = String(tutor.TeachingMode || '').toUpperCase();
+  const sPin = String(student.PinCode || '').trim();
+  if (sMode === 'ONLINE') locationScore = 15;
+  else if (sPin && tPins.indexOf(sPin) !== -1) locationScore = 15;
+  else if (sPin && tPins.some(function (tp) { return tp.slice(0, 4) === sPin.slice(0, 4); })) locationScore = 9;
+  else if (student.AreaLocality && tutor.PreferredLocations && String(tutor.PreferredLocations).toLowerCase().indexOf(String(student.AreaLocality).toLowerCase()) !== -1) locationScore = 9;
+
+  let modeScore = 0;
+  if (sMode === tMode) modeScore = 10;
+  else if (tMode === 'HYBRID') modeScore = 8;
+  else if (sMode === 'HYBRID') modeScore = 6;
+
+  let dayMatches = 0;
+  sDays.forEach(function (d) { if (tDays.indexOf(d) !== -1) dayMatches++; });
+  const dayScore = sDays.length > 0 ? round2_(6 * (dayMatches / sDays.length)) : 3;
+  const timeScore = (student.PreferredTime && tutor.PreferredTiming) ? 4 : 2;
+  const scheduleScore = round2_(dayScore + timeScore);
+
+  const budget = Number(student.BudgetPerMonth || 0);
+  const expected = Number(tutor.ExpectedMonthlyFee || 0);
+  let budgetScore = 0;
+  if (budget > 0 && expected > 0) {
+    if (expected <= budget) budgetScore = 10;
+    else if (expected <= budget * 1.1) budgetScore = 6;
+    else if (expected <= budget * 1.2) budgetScore = 3;
+  }
+
+  const totalScore = Math.min(100, Math.round(subjectScore + classScore + boardScore + locationScore + modeScore + scheduleScore + budgetScore));
+  const prefGender = String(student.PreferredTutorGender || 'ANY').toUpperCase();
+  const tutorGender = String(tutor.Gender || 'PREFER_NOT_TO_SAY').toUpperCase();
+  const genderIndicator = (prefGender === 'ANY') ? 'NO_PREFERENCE' : (prefGender === tutorGender ? 'MATCH' : 'MISMATCH');
+
+  const reasons = [
+    'Subjects ' + matchedSubjects + '/' + sSubjects.length,
+    classScore === 15 ? 'Exact Class' : 'Class Partial/Mismatch',
+    boardScore === 10 ? student.Board + ' Match' : 'Board Differs',
+    locationScore >= 15 ? 'Location Match' : (locationScore >= 9 ? 'Nearby Area' : 'Area Differs'),
+    expected <= budget ? 'Within Budget' : 'Fee +₹' + (expected - budget)
+  ];
+
+  return {
+    score: totalScore,
+    breakdown: { subject: subjectScore, classGrade: classScore, board: boardScore, location: locationScore, mode: modeScore, schedule: scheduleScore, budget: budgetScore, genderIndicator: genderIndicator },
+    explanation: reasons.join(' · ')
+  };
+}
+
+function runAutoMatchOutreachForStudent_(student, settings) {
+  if (!settings.AUTO_MATCH_OUTREACH_ENABLED) return 0;
+  if (!student || (student.Status !== 'VERIFIED' && student.Status !== 'ACTIVE')) return 0;
+  const activeAsg = getAllRows_('Assignments', false).some(function (a) {
+    return a.StudentId === student.StudentId && (a.Status === 'ACTIVE' || a.Status === 'OFFERED' || a.Status === 'ACCEPTED');
+  });
+  if (activeAsg) return 0;
+
+  const tutors = getAllRows_('Tutors', false).filter(function (t) { return t.Status === 'VERIFIED' || t.Status === 'ACTIVE'; });
+  const existingMatches = getAllRows_('Matches', false).filter(function (m) { return m.StudentId === student.StudentId; });
+  const matchedTutorMap = {};
+  existingMatches.forEach(function (m) { matchedTutorMap[m.TutorId] = m; });
+
+  const sMode = String(student.TeachingMode || '').toUpperCase();
+  const scored = [];
+  tutors.forEach(function (t) {
+    const tMode = String(t.TeachingMode || '').toUpperCase();
+    if (sMode === 'OFFLINE' && tMode === 'ONLINE') return;
+    if (sMode === 'ONLINE' && tMode === 'OFFLINE') return;
+    const res = computeMatchScore_(student, t);
+    if (res.score >= 60) scored.push({ tutor: t, scoreObj: res });
+  });
+  scored.sort(function (a, b) { return b.scoreObj.score - a.scoreObj.score; });
+
+  const now = nowIso_();
+  let outreachCount = 0;
+  scored.slice(0, 5).forEach(function (item) {
+    const t = item.tutor;
+    if (matchedTutorMap[t.TutorId]) return;
+    const matchObj = {
+      MatchId: generateId_('Matches', 'MTH'), StudentId: student.StudentId, TutorId: t.TutorId,
+      MatchScore: item.scoreObj.score, ScoreBreakdownJson: JSON.stringify(item.scoreObj),
+      TutorExpressedInterest: false, ShortlistStatus: 'SUGGESTED',
+      MatchingNotes: 'Autopilot match outreach (' + item.scoreObj.score + '/100)',
+      CreatedBy: 'AUTOPILOT', IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+    };
+    appendRow_('Matches', matchObj);
+    const idemp = 'AUTO_OUTREACH_' + student.StudentId + '_' + t.TutorId;
+    if (isValidEmail_(t.Email)) {
+      sendNotificationEmail_('TUTOR', t.TutorId, t.Email, 'AUTOPILOT_OPPORTUNITY',
+        'New Matching Tuition Opportunity (' + item.scoreObj.score + '% Fit) — ' + student.ClassGrade,
+        '<p>Dear ' + escapeHtml_(t.FullName) + ',</p>' +
+        '<p>TutorSync found a verified tuition requirement matching your profile (<b>' + item.scoreObj.score + '% alignment</b>):</p>' +
+        '<ul><li><b>Class / Board:</b> ' + escapeHtml_(student.ClassGrade + ' · ' + student.Board) + '</li>' +
+        '<li><b>Subjects:</b> ' + escapeHtml_(parseListField_(student.SubjectsRequired).join(', ')) + '</li>' +
+        '<li><b>Mode / Area:</b> ' + escapeHtml_(student.TeachingMode + ' ' + (student.PinCode || '')) + '</li>' +
+        '<li><b>Parent Budget:</b> ₹' + student.BudgetPerMonth + '/month</li></ul>' +
+        '<p>Log into your <b>Tutor Portal → Open Opportunities</b> and click <b>Express Interest</b> to be prioritized for this assignment.</p>',
+        null, idemp, 'NORMAL'
+      );
+      outreachCount++;
+    }
+  });
+  return outreachCount;
+}
+
+function handleAdminRunMatching_(p) {
+  const studentId = cleanStr_(p.studentId, 30);
+  const student = findRowByField_('Students', 'StudentId', studentId, false);
+  if (!student) throw createApiError_('NOT_FOUND', 'Student not found.');
+  if (['VERIFIED', 'ACTIVE'].indexOf(student.Status) === -1) throw createApiError_('VALIDATION_ERROR', 'Student must be VERIFIED or ACTIVE.');
+
+  const tutors = getAllRows_('Tutors', false);
+  const assignments = getAllRows_('Assignments', false);
+  const existingMatches = getAllRows_('Matches', false).filter(function (m) { return m.StudentId === studentId; });
+  const matchMap = {};
+  existingMatches.forEach(function (m) { matchMap[m.TutorId] = m; });
+
+  const sMode = String(student.TeachingMode || '').toUpperCase();
+  const candidates = [];
+  tutors.forEach(function (t) {
+    if (['VERIFIED', 'ACTIVE'].indexOf(t.Status) === -1) return;
+    const tMode = String(t.TeachingMode || '').toUpperCase();
+    if (sMode === 'OFFLINE' && tMode === 'ONLINE') return;
+    if (sMode === 'ONLINE' && tMode === 'OFFLINE') return;
+    const result = computeMatchScore_(student, t);
+    const activePlatformCount = assignments.filter(function (a) { return a.TutorId === t.TutorId && a.Status === 'ACTIVE'; }).length;
+    const prev = matchMap[t.TutorId] || null;
+    candidates.push({
+      tutorId: t.TutorId, fullName: t.FullName, qualifications: t.Qualifications, experienceYears: t.ExperienceYears,
+      subjects: parseListField_(t.Subjects), classesGrades: parseListField_(t.ClassesGrades), boardExpertise: parseListField_(t.BoardExpertise),
+      teachingMode: t.TeachingMode, preferredLocations: t.PreferredLocations, pinCodes: parseListField_(t.PinCodes),
+      expectedMonthlyFee: t.ExpectedMonthlyFee, phone: t.Phone, whatsapp: t.WhatsApp,
+      activeWorkload: Number(t.CurrentStudentCount || 0) + activePlatformCount,
+      matchScore: result.score, breakdown: result.breakdown, explanation: result.explanation,
+      matchId: prev ? prev.MatchId : '', shortlistStatus: prev ? prev.ShortlistStatus : 'UNLISTED',
+      tutorExpressedInterest: prev ? (prev.TutorExpressedInterest === true || prev.TutorExpressedInterest === 'TRUE') : false,
+      matchingNotes: prev ? prev.MatchingNotes : ''
+    });
+  });
+  candidates.sort(function (a, b) { return b.matchScore - a.matchScore; });
+  return { student: student, candidates: candidates, disclaimer: 'Match scores reflect profile parameter alignment only and do not guarantee academic outcomes.' };
+}
+
+function handleAdminListMatches_(p) {
+  let rows = getAllRows_('Matches', false);
+  if (p && p.studentId) rows = rows.filter(function (r) { return r.StudentId === p.studentId; });
+  if (p && p.status) rows = rows.filter(function (r) { return r.ShortlistStatus === p.status; });
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  return rows.map(function (m) {
+    m.StudentName = students[m.StudentId] ? students[m.StudentId].ParentOrStudentName : m.StudentId;
+    m.TutorName = tutors[m.TutorId] ? tutors[m.TutorId].FullName : m.TutorId;
+    return m;
+  }).reverse();
+}
+
+function handleAdminSaveMatchAction_(session, p) {
+  const studentId = cleanStr_(p.studentId, 30);
+  const tutorId = cleanStr_(p.tutorId, 30);
+  const status = cleanStr_(p.shortlistStatus, 40).toUpperCase();
+  if (['SUGGESTED', 'SHORTLISTED', 'CONTACTED', 'CONVERTED_TO_ASSIGNMENT', 'REJECTED'].indexOf(status) === -1) {
+    throw createApiError_('VALIDATION_ERROR', 'Invalid shortlist status.');
+  }
+  const student = findRowByField_('Students', 'StudentId', studentId, false);
+  const tutor = findRowByField_('Tutors', 'TutorId', tutorId, false);
+  if (!student || !tutor) throw createApiError_('NOT_FOUND', 'Student or Tutor not found.');
+
+  const scoreObj = computeMatchScore_(student, tutor);
+  const existing = getAllRows_('Matches', false).filter(function (m) { return m.StudentId === studentId && m.TutorId === tutorId; })[0];
+  const now = nowIso_();
+  if (existing) {
+    const updated = updateRowByKey_('Matches', 'MatchId', existing.MatchId, {
+      MatchScore: scoreObj.score, ScoreBreakdownJson: JSON.stringify(scoreObj), ShortlistStatus: status,
+      MatchingNotes: cleanStr_(p.matchingNotes !== undefined ? p.matchingNotes : existing.MatchingNotes, 500), UpdatedAt: now
+    });
+    writeAudit_(session.userId, 'ADMIN', 'MATCH_UPDATED', 'Matches', existing.MatchId, existing, updated, p.matchingNotes || '');
+    return updated;
+  }
+  const matchObj = {
+    MatchId: generateId_('Matches', 'MTH'), StudentId: studentId, TutorId: tutorId,
+    MatchScore: scoreObj.score, ScoreBreakdownJson: JSON.stringify(scoreObj), TutorExpressedInterest: false,
+    ShortlistStatus: status, MatchingNotes: cleanStr_(p.matchingNotes, 500), CreatedBy: session.userId,
+    IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('Matches', matchObj);
+  writeAudit_(session.userId, 'ADMIN', 'MATCH_CREATED', 'Matches', matchObj.MatchId, null, matchObj, status);
+  return matchObj;
+}
+
+/* ============================================================================
+ * 7. CRITICAL GATES INBOX, PARTICIPANTS, ASSIGNMENTS & SESSIONS
+ * ============================================================================ */
+
+function indexBy_(rows, field) {
+  const m = {};
+  rows.forEach(function (r) { m[r[field]] = r; });
+  return m;
+}
+
+function handleAdminGetCriticalGates_() {
+  const students = getAllRows_('Students', false);
+  const tutors = getAllRows_('Tutors', false);
+  const matches = getAllRows_('Matches', false);
+  const claims = getAllRows_('PaymentClaims', true);
+  const payouts = getAllRows_('Payouts', true);
+  const invoices = getAllRows_('Invoices', false);
+  const stuMap = indexBy_(students, 'StudentId');
+  const tutMap = indexBy_(tutors, 'TutorId');
+  const invMap = indexBy_(invoices, 'InvoiceId');
+
+  const gate1Tutors = tutors.filter(function (t) { return t.Status === 'NEW' || t.Status === 'UNDER_REVIEW'; });
+  const gate1Students = students.filter(function (s) { return s.Status === 'NEW' || s.Status === 'UNDER_REVIEW'; });
+  const gate2Matches = matches.filter(function (m) {
+    return (m.TutorExpressedInterest === true || m.TutorExpressedInterest === 'TRUE') &&
+      m.ShortlistStatus !== 'CONVERTED_TO_ASSIGNMENT' && m.ShortlistStatus !== 'REJECTED';
+  }).map(function (m) {
+    const s = stuMap[m.StudentId]; const t = tutMap[m.TutorId];
+    return {
+      MatchId: m.MatchId, StudentId: m.StudentId, TutorId: m.TutorId, MatchScore: m.MatchScore,
+      StudentName: s ? s.ParentOrStudentName : m.StudentId, StudentBudget: s ? s.BudgetPerMonth : 0,
+      StudentClass: s ? s.ClassGrade : '', StudentSubjects: s ? parseListField_(s.SubjectsRequired) : [],
+      TutorName: t ? t.FullName : m.TutorId, TutorPhone: t ? t.Phone : '', TutorFee: t ? t.ExpectedMonthlyFee : 0,
+      MatchingNotes: m.MatchingNotes
+    };
+  });
+
+  const gate3Claims = claims.filter(function (c) { return c.Status === 'PENDING_VERIFICATION'; }).map(function (c) {
+    const s = stuMap[c.StudentId]; const inv = invMap[c.InvoiceId];
+    c.StudentName = s ? s.ParentOrStudentName : c.StudentId;
+    c.StudentPhone = s ? s.Phone : '';
+    c.InvoiceBalance = inv ? inv.BalanceDue : 0;
+    return c;
+  });
+
+  const gate4Payouts = payouts.filter(function (p) { return p.Status === 'PENDING' || p.Status === 'APPROVED'; }).map(function (p) {
+    const t = tutMap[p.TutorId];
+    p.TutorName = t ? t.FullName : p.TutorId;
+    p.TutorPhone = t ? t.Phone : '';
+    p.TutorUpiId = t ? (t.UpiId || '') : '';
+    return p;
+  });
+
+  return {
+    gate1Tutors: gate1Tutors,
+    gate1Students: gate1Students,
+    gate2Matches: gate2Matches,
+    gate3Claims: gate3Claims,
+    gate4Payouts: gate4Payouts
+  };
+}
+
+function handleAdminListEntities_(sheetName, p) {
+  let rows = getAllRows_(sheetName, p && p.includeDeleted === true);
+  if (p && p.status) rows = rows.filter(function (r) { return r.Status === p.status; });
+  return rows.reverse();
+}
+
+function handleAdminSaveStudent_(session, p) {
+  const now = nowIso_();
+  const phone = normalizePhone_(p.phone);
+  if (!cleanStr_(p.name, 100) || !isValidIndianPhone_(phone) || !isValidEmail_(p.email)) {
+    throw createApiError_('VALIDATION_ERROR', 'Name, valid 10-digit Indian phone, and valid email are required.');
+  }
+  const subjects = parseListField_(p.subjectsRequired);
+  const days = parseListField_(p.preferredDays);
+
+  if (p.studentId) {
+    const existing = findRowByField_('Students', 'StudentId', p.studentId, true);
+    if (!existing) throw createApiError_('NOT_FOUND', 'Student not found.');
+    const fields = {
+      ParentOrStudentName: cleanStr_(p.name, 100), Phone: phone, WhatsApp: normalizePhone_(p.whatsapp || phone),
+      Email: cleanStr_(p.email, 120).toLowerCase(), ClassGrade: cleanStr_(p.classGrade, 50), Board: cleanStr_(p.board, 40),
+      BoardOther: cleanStr_(p.boardOther, 60), SubjectsRequired: JSON.stringify(subjects),
+      PreferredTutorGender: cleanStr_(p.preferredTutorGender || 'ANY', 20), TeachingMode: cleanStr_(p.teachingMode, 20),
+      AreaLocality: cleanStr_(p.areaLocality, 120), PinCode: cleanStr_(p.pinCode, 10),
+      PreferredDays: JSON.stringify(days), PreferredTime: cleanStr_(p.preferredTime, 80),
+      BudgetPerMonth: Number(p.budgetPerMonth || 0), PreferredStartDate: cleanStr_(p.preferredStartDate, 20),
+      AdditionalNotes: cleanStr_(p.additionalNotes, 1000),
+      Status: p.status && APP_CONSTANTS.STUDENT_STATUSES.indexOf(p.status) !== -1 ? p.status : existing.Status,
+      UpdatedAt: now
+    };
+    fields.ProfileScore = computeStudentProfileScore_(fields);
+    const updated = updateRowByKey_('Students', 'StudentId', p.studentId, fields);
+    CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+    writeAudit_(session.userId, 'ADMIN', 'STUDENT_UPDATED', 'Students', p.studentId, existing, updated, 'Admin edit');
+    return updated;
+  }
+
+  const studentId = generateId_('Students', 'STU');
+  const record = {
+    StudentId: studentId, ParentOrStudentName: cleanStr_(p.name, 100), Phone: phone, WhatsApp: normalizePhone_(p.whatsapp || phone),
+    Email: cleanStr_(p.email, 120).toLowerCase(), ClassGrade: cleanStr_(p.classGrade, 50), Board: cleanStr_(p.board || 'CBSE', 40),
+    BoardOther: cleanStr_(p.boardOther, 60), SubjectsRequired: JSON.stringify(subjects),
+    PreferredTutorGender: cleanStr_(p.preferredTutorGender || 'ANY', 20), TeachingMode: cleanStr_(p.teachingMode || 'OFFLINE', 20),
+    AreaLocality: cleanStr_(p.areaLocality, 120), PinCode: cleanStr_(p.pinCode, 10),
+    PreferredDays: JSON.stringify(days), PreferredTime: cleanStr_(p.preferredTime, 80),
+    BudgetPerMonth: Number(p.budgetPerMonth || 0), PreferredStartDate: cleanStr_(p.preferredStartDate, 20),
+    AdditionalNotes: cleanStr_(p.additionalNotes, 1000), ConsentAccepted: true, ConsentTimestamp: now,
+    Status: p.status && APP_CONSTANTS.STUDENT_STATUSES.indexOf(p.status) !== -1 ? p.status : 'VERIFIED',
+    VerificationNotes: cleanStr_(p.verificationNotes || 'Added by Admin', 300),
+    VerifiedBy: session.userId, VerifiedAt: now, IsDeleted: false, DeletedAt: '', DeletedBy: '',
+    CreatedAt: now, UpdatedAt: now, ProfileScore: 0
+  };
+  record.ProfileScore = computeStudentProfileScore_(record);
+  appendRow_('Students', record);
+  CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  if (record.Status === 'VERIFIED' || record.Status === 'ACTIVE') {
+    provisionPortalUser_(record.Email, 'STUDENT', studentId);
+    runAutoMatchOutreachForStudent_(record, getSettingsMap_());
+  }
+  writeAudit_(session.userId, 'ADMIN', 'STUDENT_CREATED', 'Students', studentId, null, record, 'Admin creation');
+  return record;
+}
+
+function handleAdminSaveTutor_(session, p) {
+  const now = nowIso_();
+  const phone = normalizePhone_(p.phone);
+  if (!cleanStr_(p.fullName, 100) || !isValidIndianPhone_(phone) || !isValidEmail_(p.email)) {
+    throw createApiError_('VALIDATION_ERROR', 'Name, valid 10-digit Indian phone, and valid email are required.');
+  }
+  const subjects = parseListField_(p.subjects);
+  const classes = parseListField_(p.classesGrades);
+  const boards = parseListField_(p.boardExpertise);
+  const pins = parseListField_(p.pinCodes);
+  const days = parseListField_(p.availabilityDays);
+  const langs = parseListField_(p.languages);
+
+  if (p.tutorId) {
+    const existing = findRowByField_('Tutors', 'TutorId', p.tutorId, true);
+    if (!existing) throw createApiError_('NOT_FOUND', 'Tutor not found.');
+    const fields = {
+      FullName: cleanStr_(p.fullName, 100), Phone: phone, WhatsApp: normalizePhone_(p.whatsapp || phone),
+      Email: cleanStr_(p.email, 120).toLowerCase(), Gender: cleanStr_(p.gender || 'PREFER_NOT_TO_SAY', 30),
+      Qualifications: cleanStr_(p.qualifications, 250), ExperienceYears: Number(p.experienceYears || 0),
+      Subjects: JSON.stringify(subjects), ClassesGrades: JSON.stringify(classes), BoardExpertise: JSON.stringify(boards),
+      TeachingMode: cleanStr_(p.teachingMode, 20), PreferredLocations: cleanStr_(p.preferredLocations, 250),
+      PinCodes: JSON.stringify(pins), MaxTravelDistanceKm: Number(p.maxTravelDistanceKm || 0),
+      AvailabilityDays: JSON.stringify(days), PreferredTiming: cleanStr_(p.preferredTiming, 100),
+      ExpectedMonthlyFee: Number(p.expectedMonthlyFee || 0), CurrentStudentCount: Number(p.currentStudentCount || 0),
+      Languages: JSON.stringify(langs), ShortBio: cleanStr_(p.shortBio, 1000), DocumentUrl: cleanStr_(p.documentUrl, 400),
+      UpiId: cleanStr_(p.upiId !== undefined ? p.upiId : existing.UpiId, 80),
+      Status: p.status && APP_CONSTANTS.TUTOR_STATUSES.indexOf(p.status) !== -1 ? p.status : existing.Status,
+      UpdatedAt: now
+    };
+    fields.ProfileScore = computeTutorProfileScore_(fields);
+    const updated = updateRowByKey_('Tutors', 'TutorId', p.tutorId, fields);
+    CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+    writeAudit_(session.userId, 'ADMIN', 'TUTOR_UPDATED', 'Tutors', p.tutorId, existing, updated, 'Admin edit');
+    return updated;
+  }
+
+  const tutorId = generateId_('Tutors', 'TUT');
+  const record = {
+    TutorId: tutorId, FullName: cleanStr_(p.fullName, 100), Phone: phone, WhatsApp: normalizePhone_(p.whatsapp || phone),
+    Email: cleanStr_(p.email, 120).toLowerCase(), Gender: cleanStr_(p.gender || 'PREFER_NOT_TO_SAY', 30),
+    Qualifications: cleanStr_(p.qualifications, 250), ExperienceYears: Number(p.experienceYears || 0),
+    Subjects: JSON.stringify(subjects), ClassesGrades: JSON.stringify(classes), BoardExpertise: JSON.stringify(boards),
+    TeachingMode: cleanStr_(p.teachingMode || 'OFFLINE', 20), PreferredLocations: cleanStr_(p.preferredLocations, 250),
+    PinCodes: JSON.stringify(pins), MaxTravelDistanceKm: Number(p.maxTravelDistanceKm || 0),
+    AvailabilityDays: JSON.stringify(days), PreferredTiming: cleanStr_(p.preferredTiming, 100),
+    ExpectedMonthlyFee: Number(p.expectedMonthlyFee || 0), CurrentStudentCount: Number(p.currentStudentCount || 0),
+    Languages: JSON.stringify(langs), ShortBio: cleanStr_(p.shortBio, 1000), DocumentUrl: cleanStr_(p.documentUrl, 400),
+    ConsentAccepted: true, ConsentTimestamp: now,
+    Status: p.status && APP_CONSTANTS.TUTOR_STATUSES.indexOf(p.status) !== -1 ? p.status : 'VERIFIED',
+    VerificationNotes: cleanStr_(p.verificationNotes || 'Added by Admin', 300),
+    VerifiedBy: session.userId, VerifiedAt: now, IsDeleted: false, DeletedAt: '', DeletedBy: '',
+    CreatedAt: now, UpdatedAt: now, ProfileScore: 0, UpiId: cleanStr_(p.upiId, 80), BankAccountMasked: ''
+  };
+  record.ProfileScore = computeTutorProfileScore_(record);
+  appendRow_('Tutors', record);
+  CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  if (record.Status === 'VERIFIED' || record.Status === 'ACTIVE') provisionPortalUser_(record.Email, 'TUTOR', tutorId);
+  writeAudit_(session.userId, 'ADMIN', 'TUTOR_CREATED', 'Tutors', tutorId, null, record, 'Admin creation');
+  return record;
+}
+
+function handleAdminVerifyParticipant_(session, sheetName, p) {
+  const keyField = sheetName === 'Students' ? 'StudentId' : 'TutorId';
+  const id = cleanStr_(p.entityId, 30);
+  const newStatus = cleanStr_(p.status, 30).toUpperCase();
+  const validList = sheetName === 'Students' ? APP_CONSTANTS.STUDENT_STATUSES : APP_CONSTANTS.TUTOR_STATUSES;
+  if (validList.indexOf(newStatus) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid status.');
+
+  const existing = findRowByField_(sheetName, keyField, id, false);
+  if (!existing) throw createApiError_('NOT_FOUND', 'Participant not found.');
+  if (newStatus === 'REJECTED' && !cleanStr_(p.notes, 300)) {
+    throw createApiError_('VALIDATION_ERROR', 'Verification notes/reason are required when rejecting.');
+  }
+
+  const now = nowIso_();
+  const updates = { Status: newStatus, VerificationNotes: cleanStr_(p.notes, 500), UpdatedAt: now };
+  if (newStatus === 'VERIFIED' || newStatus === 'ACTIVE') {
+    updates.VerifiedBy = session.userId;
+    updates.VerifiedAt = now;
+  }
+  const updated = updateRowByKey_(sheetName, keyField, id, updates);
+  CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  writeAudit_(session.userId, 'ADMIN', 'PARTICIPANT_STATUS_CHANGED', sheetName, id, { Status: existing.Status }, { Status: newStatus }, p.notes || '');
+
+  if (newStatus === 'VERIFIED' || newStatus === 'ACTIVE') {
+    provisionPortalUser_(existing.Email, sheetName === 'Students' ? 'STUDENT' : 'TUTOR', id);
+    if (sheetName === 'Students') runAutoMatchOutreachForStudent_(updated, getSettingsMap_());
+  }
+  return updated;
+}
+
+function handleAdminSoftDelete_(session, sheetName, keyField, p) {
+  const id = cleanStr_(p.entityId, 30);
+  const reason = cleanStr_(p.reason, 300) || 'Admin archived';
+  const existing = findRowByField_(sheetName, keyField, id, false);
+  if (!existing) throw createApiError_('NOT_FOUND', 'Record not found.');
+  const updated = updateRowByKey_(sheetName, keyField, id, {
+    IsDeleted: true, DeletedAt: nowIso_(), DeletedBy: session.userId, UpdatedAt: nowIso_()
+  });
+  CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  writeAudit_(session.userId, 'ADMIN', 'RECORD_SOFT_DELETED', sheetName, id, existing, null, reason);
+  return updated;
+}
+
+function handleAdminListAssignments_(p) {
+  let rows = getAllRows_('Assignments', false);
+  if (p && p.status) rows = rows.filter(function (a) { return a.Status === p.status; });
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  return rows.map(function (a) {
+    a.StudentName = students[a.StudentId] ? students[a.StudentId].ParentOrStudentName : a.StudentId;
+    a.TutorName = tutors[a.TutorId] ? tutors[a.TutorId].FullName : a.TutorId;
+    return a;
+  }).reverse();
+}
+
+function handleAdminSaveAssignment_(session, p) {
+  const settings = getSettingsMap_();
+  const minComm = Number(settings.MIN_COMMISSION_PCT || 8);
+  const maxComm = Number(settings.MAX_COMMISSION_PCT || 10);
+  const defComm = Number(settings.DEFAULT_COMMISSION_PCT || 10);
+
+  const student = findRowByField_('Students', 'StudentId', p.studentId, false);
+  const tutor = findRowByField_('Tutors', 'TutorId', p.tutorId, false);
+  if (!student || !tutor) throw createApiError_('NOT_FOUND', 'Valid Student and Tutor are required.');
+  if (['VERIFIED', 'ACTIVE'].indexOf(student.Status) === -1 || ['VERIFIED', 'ACTIVE'].indexOf(tutor.Status) === -1) {
+    throw createApiError_('VALIDATION_ERROR', 'Both Student and Tutor must be VERIFIED or ACTIVE.');
+  }
+
+  const fee = Number(p.agreedMonthlyFee);
+  if (!fee || fee <= 0) throw createApiError_('VALIDATION_ERROR', 'Agreed monthly fee must be positive.');
+  const commRate = p.commissionRatePct !== undefined && p.commissionRatePct !== '' ? Number(p.commissionRatePct) : defComm;
+  if (isNaN(commRate) || commRate < 0 || commRate > 50) throw createApiError_('VALIDATION_ERROR', 'Invalid commission rate.');
+
+  const isOverride = (commRate < minComm || commRate > maxComm || commRate !== defComm);
+  const overrideReason = cleanStr_(p.commissionOverrideReason, 300);
+  if ((commRate < minComm || commRate > maxComm) && !overrideReason) {
+    throw createApiError_('VALIDATION_ERROR', 'Commission rates outside ' + minComm + '%–' + maxComm + '% require an override reason.');
+  }
+
+  const dueDay = Math.min(28, Math.max(1, Number(p.paymentDueDay || 7)));
+  const now = nowIso_();
+  const isTrial = p.isTrialEnabled === true;
+
+  if (p.assignmentId) {
+    const existing = findRowByField_('Assignments', 'AssignmentId', p.assignmentId, false);
+    if (!existing) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+    const updated = updateRowByKey_('Assignments', 'AssignmentId', p.assignmentId, {
+      Subjects: JSON.stringify(parseListField_(p.subjects)), ClassGrade: cleanStr_(p.classGrade, 50),
+      TeachingMode: cleanStr_(p.teachingMode, 20), AgreedMonthlyFee: round2_(fee),
+      TuitionFrequency: cleanStr_(p.tuitionFrequency || 'Monthly', 40),
+      SessionsPerWeek: Math.max(1, Number(p.sessionsPerWeek || 3)), SessionDurationMins: Math.max(15, Number(p.sessionDurationMins || 60)),
+      StartDate: cleanStr_(p.startDate, 20), EndDate: cleanStr_(p.endDate, 20), PaymentDueDay: dueDay,
+      CommissionRatePct: round2_(commRate), IsCommissionOverride: isOverride, CommissionOverrideReason: overrideReason,
+      FinalBillApproved: p.finalBillApproved === true, Notes: cleanStr_(p.notes, 1000), UpdatedAt: now
+    });
+    writeAudit_(session.userId, 'ADMIN', Number(existing.CommissionRatePct) !== round2_(commRate) ? 'COMMISSION_OVERRIDDEN' : 'ASSIGNMENT_UPDATED',
+      'Assignments', p.assignmentId, existing, updated, overrideReason || 'Admin edit');
+    return updated;
+  }
+
+  const assignmentId = generateId_('Assignments', 'ASG');
+  const initialStatus = cleanStr_(p.status || 'OFFERED', 30).toUpperCase();
+  const record = {
+    AssignmentId: assignmentId, MatchId: cleanStr_(p.matchId, 30), StudentId: p.studentId, TutorId: p.tutorId,
+    Subjects: JSON.stringify(parseListField_(p.subjects)), ClassGrade: cleanStr_(p.classGrade || student.ClassGrade, 50),
+    TeachingMode: cleanStr_(p.teachingMode || student.TeachingMode, 20), AgreedMonthlyFee: round2_(fee),
+    TuitionFrequency: cleanStr_(p.tuitionFrequency || 'Monthly', 40),
+    SessionsPerWeek: Math.max(1, Number(p.sessionsPerWeek || 3)), SessionDurationMins: Math.max(15, Number(p.sessionDurationMins || 60)),
+    StartDate: cleanStr_(p.startDate || todayIso_(), 20), EndDate: cleanStr_(p.endDate, 20), PaymentDueDay: dueDay,
+    CommissionRatePct: round2_(commRate), IsCommissionOverride: isOverride, CommissionOverrideReason: overrideReason,
+    StudentConfirmed: false, StudentConfirmedAt: '', TutorConfirmed: false, TutorConfirmedAt: '',
+    Status: APP_CONSTANTS.ASSIGNMENT_STATUSES.indexOf(initialStatus) !== -1 ? initialStatus : 'OFFERED',
+    FinalBillApproved: false, Notes: cleanStr_(p.notes, 1000),
+    IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now,
+    IsTrialEnabled: isTrial, TrialStatus: isTrial ? 'TRIAL_SCHEDULED' : 'NONE',
+    TrialDate: isTrial ? cleanStr_(p.trialDate || todayIso_(), 20) : '', TrialNotes: ''
+  };
+  appendRow_('Assignments', record);
+  if (record.MatchId) updateRowByKey_('Matches', 'MatchId', record.MatchId, { ShortlistStatus: 'CONVERTED_TO_ASSIGNMENT', UpdatedAt: now });
+  writeAudit_(session.userId, 'ADMIN', 'ASSIGNMENT_CREATED', 'Assignments', assignmentId, null, record, overrideReason || 'Assignment created');
+  if (record.Status === 'OFFERED') notifyAssignmentOffer_(record, student, tutor);
+  return record;
+}
+
+function notifyAssignmentOffer_(assignment, student, tutor) {
+  const trialNote = (assignment.IsTrialEnabled === true || assignment.IsTrialEnabled === 'TRUE')
+    ? '<p><b>Demo / Trial Class:</b> Scheduled on ' + escapeHtml_(assignment.TrialDate) + ' prior to full monthly commitment.</p>' : '';
+  sendNotificationEmail_('STUDENT', student.StudentId, student.Email, 'ASSIGNMENT_OFFERED',
+    'TutorSync Tuition Offer Ready — ' + assignment.AssignmentId,
+    '<p>Dear ' + escapeHtml_(student.ParentOrStudentName) + ',</p><p>Your curated tutor arrangement for <b>' + escapeHtml_(assignment.ClassGrade) + '</b> (Agreed Fee: <b>₹' + assignment.AgreedMonthlyFee + '/mo</b>) is ready.</p>' + trialNote + '<p>Log into your Student Portal to confirm.</p>',
+    null, null, 'HIGH'
+  );
+  sendNotificationEmail_('TUTOR', tutor.TutorId, tutor.Email, 'ASSIGNMENT_OFFERED',
+    'TutorSync Assignment Offer Ready — ' + assignment.AssignmentId,
+    '<p>Dear ' + escapeHtml_(tutor.FullName) + ',</p><p>Assignment <b>' + assignment.AssignmentId + '</b> (Fee: ₹' + assignment.AgreedMonthlyFee + '/mo, Platform Commission: ' + assignment.CommissionRatePct + '%) has been offered to you.</p>' + trialNote + '<p>Log into your Tutor Portal to confirm.</p>',
+    null, null, 'HIGH'
+  );
+}
+
+function autoGenerateInitialSessions_(assignment) {
+  const existing = getAllRows_('Sessions', false).filter(function (s) { return s.AssignmentId === assignment.AssignmentId; });
+  if (existing.length > 0) return 0;
+  const count = Math.min(16, Math.max(4, Number(assignment.SessionsPerWeek || 3) * 4));
+  const baseDate = assignment.StartDate ? new Date(assignment.StartDate + 'T00:00:00') : new Date();
+  const stepDays = Math.max(1, Math.floor(7 / Math.max(1, Number(assignment.SessionsPerWeek || 3))));
+  const now = nowIso_();
+  const batch = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(baseDate.getTime() + (i * stepDays * 86400000));
+    batch.push({
+      SessionId: generateId_('Sessions', 'SES'), AssignmentId: assignment.AssignmentId,
+      StudentId: assignment.StudentId, TutorId: assignment.TutorId,
+      SessionDate: Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd'), StartTime: '17:00',
+      DurationMins: Number(assignment.SessionDurationMins || 60), SessionType: 'REGULAR',
+      AttendanceStatus: 'SCHEDULED', TutorConfirmed: false, StudentConfirmed: false,
+      Notes: 'Autopilot initial schedule', AdminCorrected: false, AdminCorrectionReason: '',
+      IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+    });
+  }
+  appendRowsBatch_('Sessions', batch);
+  return batch.length;
+}
+
+function handleAdminUpdateAssignmentStatus_(session, p) {
+  const id = cleanStr_(p.assignmentId, 30);
+  const newStatus = cleanStr_(p.status, 30).toUpperCase();
+  if (APP_CONSTANTS.ASSIGNMENT_STATUSES.indexOf(newStatus) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid assignment status.');
+  const existing = findRowByField_('Assignments', 'AssignmentId', id, false);
+  if (!existing) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+
+  if (newStatus === 'ACTIVE' && (!(existing.StudentConfirmed === true || existing.StudentConfirmed === 'TRUE') || !(existing.TutorConfirmed === true || existing.TutorConfirmed === 'TRUE'))) {
+    if (p.adminForce !== true) throw createApiError_('VALIDATION_ERROR', 'Both Student and Tutor must confirm before activating.');
+  }
+
+  const now = nowIso_();
+  const updated = updateRowByKey_('Assignments', 'AssignmentId', id, {
+    Status: newStatus,
+    FinalBillApproved: p.finalBillApproved !== undefined ? (p.finalBillApproved === true) : existing.FinalBillApproved,
+    UpdatedAt: now
+  });
+
+  if (newStatus === 'ACTIVE') {
+    updateRowByKey_('Students', 'StudentId', existing.StudentId, { Status: 'ACTIVE', UpdatedAt: now });
+    updateRowByKey_('Tutors', 'TutorId', existing.TutorId, { Status: 'ACTIVE', UpdatedAt: now });
+    autoGenerateInitialSessions_(updated);
+    CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  }
+  if (newStatus === 'OFFERED') {
+    const stu = findRowByField_('Students', 'StudentId', existing.StudentId, false);
+    const tut = findRowByField_('Tutors', 'TutorId', existing.TutorId, false);
+    if (stu && tut) notifyAssignmentOffer_(updated, stu, tut);
+  }
+  writeAudit_(session.userId, 'ADMIN', 'ASSIGNMENT_STATUS_CHANGED', 'Assignments', id, { Status: existing.Status }, { Status: newStatus }, p.reason || '');
+  return updated;
+}
+
+function handleAdminUpdateTrialStatus_(session, p) {
+  const id = cleanStr_(p.assignmentId, 30);
+  const trialStatus = cleanStr_(p.trialStatus, 30).toUpperCase();
+  if (APP_CONSTANTS.TRIAL_STATUSES.indexOf(trialStatus) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid trial status.');
+  const existing = findRowByField_('Assignments', 'AssignmentId', id, false);
+  if (!existing) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+  const updated = updateRowByKey_('Assignments', 'AssignmentId', id, {
+    TrialStatus: trialStatus, TrialNotes: cleanStr_(p.trialNotes, 300), UpdatedAt: nowIso_()
+  });
+  writeAudit_(session.userId, 'ADMIN', 'TRIAL_STATUS_UPDATED', 'Assignments', id, { TrialStatus: existing.TrialStatus }, { TrialStatus: trialStatus }, p.trialNotes || '');
+  return updated;
+}
+
+function handleAdminListSessions_(p) {
+  let rows = getAllRows_('Sessions', false);
+  if (p && p.assignmentId) rows = rows.filter(function (s) { return s.AssignmentId === p.assignmentId; });
+  if (p && p.month) rows = rows.filter(function (s) { return String(s.SessionDate).indexOf(p.month) === 0; });
+  return rows.reverse();
+}
+
+function handleAdminGenerateSessions_(session, p) {
+  const assignmentId = cleanStr_(p.assignmentId, 30);
+  const startDateStr = cleanStr_(p.startDate, 15);
+  const count = Math.min(30, Math.max(1, Number(p.count || 4)));
+  const startTime = cleanStr_(p.startTime || '17:00', 10);
+  const assignment = findRowByField_('Assignments', 'AssignmentId', assignmentId, false);
+  if (!assignment) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+
+  const baseDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : new Date();
+  const stepDays = Math.max(1, Math.floor(7 / Math.max(1, Number(assignment.SessionsPerWeek || 2))));
+  const now = nowIso_();
+  const created = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(baseDate.getTime() + (i * stepDays * 86400000));
+    created.push({
+      SessionId: generateId_('Sessions', 'SES'), AssignmentId: assignmentId,
+      StudentId: assignment.StudentId, TutorId: assignment.TutorId,
+      SessionDate: Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd'), StartTime: startTime,
+      DurationMins: Number(assignment.SessionDurationMins || 60), SessionType: 'REGULAR',
+      AttendanceStatus: 'SCHEDULED', TutorConfirmed: false, StudentConfirmed: false,
+      Notes: '', AdminCorrected: false, AdminCorrectionReason: '',
+      IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+    });
+  }
+  appendRowsBatch_('Sessions', created);
+  writeAudit_(session.userId, 'ADMIN', 'SESSIONS_GENERATED', 'Sessions', assignmentId, null, { count: created.length }, 'Batch schedule');
+  return { createdCount: created.length, sessions: created };
+}
+
+function handleAdminSaveSession_(session, p) {
+  const now = nowIso_();
+  const status = cleanStr_(p.attendanceStatus || 'SCHEDULED', 30).toUpperCase();
+  if (APP_CONSTANTS.SESSION_STATUSES.indexOf(status) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid attendance status.');
+
+  if (p.sessionId) {
+    const existing = findRowByField_('Sessions', 'SessionId', p.sessionId, false);
+    if (!existing) throw createApiError_('NOT_FOUND', 'Session not found.');
+    const reason = cleanStr_(p.adminCorrectionReason, 300);
+    if (!reason) throw createApiError_('VALIDATION_ERROR', 'Correction reason is required.');
+    const updated = updateRowByKey_('Sessions', 'SessionId', p.sessionId, {
+      SessionDate: cleanStr_(p.sessionDate || existing.SessionDate, 20), StartTime: cleanStr_(p.startTime || existing.StartTime, 10),
+      DurationMins: Number(p.durationMins || existing.DurationMins), SessionType: cleanStr_(p.sessionType || existing.SessionType, 20),
+      AttendanceStatus: status, Notes: cleanStr_(p.notes !== undefined ? p.notes : existing.Notes, 500),
+      AdminCorrected: true, AdminCorrectionReason: reason, UpdatedAt: now
+    });
+    writeAudit_(session.userId, 'ADMIN', 'SESSION_CORRECTED', 'Sessions', p.sessionId, existing, updated, reason);
+    return updated;
+  }
+
+  const assignment = findRowByField_('Assignments', 'AssignmentId', p.assignmentId, false);
+  if (!assignment) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+  const ses = {
+    SessionId: generateId_('Sessions', 'SES'), AssignmentId: assignment.AssignmentId,
+    StudentId: assignment.StudentId, TutorId: assignment.TutorId,
+    SessionDate: cleanStr_(p.sessionDate || todayIso_(), 20), StartTime: cleanStr_(p.startTime || '17:00', 10),
+    DurationMins: Number(p.durationMins || assignment.SessionDurationMins || 60), SessionType: cleanStr_(p.sessionType || 'REGULAR', 20),
+    AttendanceStatus: status, TutorConfirmed: false, StudentConfirmed: false, Notes: cleanStr_(p.notes, 500),
+    AdminCorrected: false, AdminCorrectionReason: '', IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('Sessions', ses);
+  writeAudit_(session.userId, 'ADMIN', 'SESSION_CREATED', 'Sessions', ses.SessionId, null, ses, 'Admin added session');
+  return ses;
+}
+
+/* ============================================================================
+ * 8. BILLING, UPI INVOICES, PAYMENT CLAIMS, PAYMENTS & TUTOR PAYOUTS
+ * ============================================================================ */
+
+function handleAdminListInvoices_(p) {
+  let rows = getAllRows_('Invoices', false);
+  if (p && p.billingMonth) rows = rows.filter(function (i) { return i.BillingMonth === p.billingMonth; });
+  if (p && p.status) rows = rows.filter(function (i) { return i.PaymentStatus === p.status; });
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  return rows.map(function (inv) {
+    inv.StudentName = students[inv.StudentId] ? students[inv.StudentId].ParentOrStudentName : inv.StudentId;
+    inv.TutorName = tutors[inv.TutorId] ? tutors[inv.TutorId].FullName : inv.TutorId;
+    return inv;
+  }).reverse();
+}
+
+function handleAdminGenerateMonthlyInvoices_(session, p) {
+  const billingMonth = cleanStr_(p && p.billingMonth ? p.billingMonth : currentMonthStr_(), 7);
+  if (!/^\d{4}-\d{2}$/.test(billingMonth)) throw createApiError_('VALIDATION_ERROR', 'Billing month must be YYYY-MM.');
+  return runMonthlyBillingCore_(billingMonth, p && p.sendEmails !== false, session.userId, 'ADMIN');
+}
+
+function runMonthlyBillingCore_(billingMonth, sendEmails, actorId, actorRole) {
+  const settings = getSettingsMap_();
+  const assignments = getAllRows_('Assignments', false);
+  const existingInvoices = getAllRows_('Invoices', false);
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+
+  const idempSet = {};
+  existingInvoices.forEach(function (inv) { if (inv.PaymentStatus !== 'CANCELLED') idempSet[inv.IdempotencyKey] = true; });
+
+  const parts = billingMonth.split('-');
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const monthStart = billingMonth + '-01';
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthEnd = billingMonth + '-' + String(lastDay).padStart(2, '0');
+
+  let generated = 0, skipped = 0;
+  const createdList = [], errors = [];
+
+  assignments.forEach(function (asg) {
+    const isActive = asg.Status === 'ACTIVE';
+    const isFinalApproved = (asg.Status === 'COMPLETED' || asg.Status === 'CANCELLED') && (asg.FinalBillApproved === true || asg.FinalBillApproved === 'TRUE');
+    if (!isActive && !isFinalApproved) return;
+    if (asg.StartDate && String(asg.StartDate) > monthEnd) return;
+    if (asg.EndDate && String(asg.EndDate) < monthStart) return;
+
+    const idempKey = asg.AssignmentId + '_' + billingMonth + (isFinalApproved ? '_FINAL' : '');
+    if (idempSet[idempKey]) { skipped++; return; }
+
+    try {
+      const dueDay = Math.min(lastDay, Math.max(1, Number(asg.PaymentDueDay || 7)));
+      const dueDate = billingMonth + '-' + String(dueDay).padStart(2, '0');
+      const inv = createAndIssueInvoiceRecord_({
+        assignment: asg, student: students[asg.StudentId], tutor: tutors[asg.TutorId],
+        billingMonth: billingMonth, idempotencyKey: idempKey,
+        baseAmount: Number(asg.AgreedMonthlyFee), adjustmentAmount: 0, adjustmentNotes: '',
+        dueDate: dueDate, sendEmail: sendEmails, settings: settings
+      });
+      idempSet[idempKey] = true;
+      generated++;
+      createdList.push(inv);
+    } catch (err) { errors.push(asg.AssignmentId + ': ' + err.message); }
+  });
+
+  writeAudit_(actorId, actorRole, 'MONTHLY_BILLING_EXECUTED', 'Invoices', billingMonth, null, { generated: generated, skipped: skipped, errors: errors }, 'Monthly billing');
+  if (generated > 0 || errors.length > 0) {
+    notifyAdmin_('Monthly Billing Run (' + billingMonth + ')',
+      '<p><b>Generated:</b> ' + generated + '<br><b>Skipped:</b> ' + skipped + '<br><b>Errors:</b> ' + (errors.length ? escapeHtml_(errors.join('; ')) : 'None') + '</p>'
+    );
+  }
+  return { billingMonth: billingMonth, generated: generated, skipped: skipped, errors: errors, invoices: createdList };
+}
+
+function handleAdminCreateManualInvoice_(session, p) {
+  const asg = findRowByField_('Assignments', 'AssignmentId', p.assignmentId, false);
+  if (!asg) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+  const billingMonth = cleanStr_(p.billingMonth || currentMonthStr_(), 7);
+  const idempKey = asg.AssignmentId + '_' + billingMonth + (p.isFinal ? '_FINAL' : '_MAN_' + Date.now());
+  if (!p.allowDuplicateMonth) {
+    const dup = getAllRows_('Invoices', false).filter(function (i) {
+      return i.AssignmentId === asg.AssignmentId && i.BillingMonth === billingMonth && i.PaymentStatus !== 'CANCELLED';
+    });
+    if (dup.length > 0) throw createApiError_('DUPLICATE_ERROR', 'Invoice already exists for this assignment and month (' + dup[0].InvoiceNumber + ').');
+  }
+  const baseAmt = Number(p.baseTuitionAmount !== undefined ? p.baseTuitionAmount : asg.AgreedMonthlyFee);
+  const adjAmt = Number(p.adjustmentAmount || 0);
+  if (baseAmt < 0 || (baseAmt + adjAmt) < 0) throw createApiError_('VALIDATION_ERROR', 'Invoice total cannot be negative.');
+
+  const inv = createAndIssueInvoiceRecord_({
+    assignment: asg, student: findRowByField_('Students', 'StudentId', asg.StudentId, true),
+    tutor: findRowByField_('Tutors', 'TutorId', asg.TutorId, true),
+    billingMonth: billingMonth, idempotencyKey: idempKey, baseAmount: round2_(baseAmt),
+    adjustmentAmount: round2_(adjAmt), adjustmentNotes: cleanStr_(p.adjustmentNotes, 300),
+    dueDate: cleanStr_(p.dueDate || todayIso_(), 20), sendEmail: p.sendEmail !== false, settings: getSettingsMap_()
+  });
+  writeAudit_(session.userId, 'ADMIN', 'INVOICE_CREATED_MANUAL', 'Invoices', inv.InvoiceId, null, inv, 'Manual invoice');
+  return inv;
+}
+
+function createAndIssueInvoiceRecord_(ctx) {
+  const now = nowIso_();
+  const invId = generateId_('Invoices', 'INV');
+  const invNum = (ctx.settings.INVOICE_PREFIX || 'TS-INV-') + ctx.billingMonth.replace('-', '') + '-' + invId.split('-')[2];
+  const baseAmt = round2_(ctx.baseAmount);
+  const adjAmt = round2_(ctx.adjustmentAmount || 0);
+  const totalAmt = Math.max(0, round2_(baseAmt + adjAmt));
+
+  const inv = {
+    InvoiceId: invId, InvoiceNumber: invNum, IdempotencyKey: ctx.idempotencyKey, BillingMonth: ctx.billingMonth,
+    AssignmentId: ctx.assignment.AssignmentId, StudentId: ctx.assignment.StudentId, TutorId: ctx.assignment.TutorId,
+    BaseTuitionAmount: baseAmt, AdjustmentAmount: adjAmt, AdjustmentNotes: ctx.adjustmentNotes || '',
+    TotalAmount: totalAmt, AmountPaid: 0, BalanceDue: totalAmt, LockedCommissionPct: Number(ctx.assignment.CommissionRatePct),
+    DueDate: ctx.dueDate, PaymentStatus: 'ISSUED', PdfFileId: '', PdfUrl: '',
+    DeliveryStatus: 'PENDING', DeliveredAt: '', IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+
+  const pdfInfo = generateInvoicePdf_(inv, ctx.assignment, ctx.student, ctx.tutor, ctx.settings);
+  inv.PdfFileId = pdfInfo.fileId;
+  inv.PdfUrl = pdfInfo.fileUrl;
+  appendRow_('Invoices', inv);
+  if (ctx.sendEmail && ctx.student && isValidEmail_(ctx.student.Email)) deliverInvoiceEmail_(inv, ctx.student, ctx.settings);
+  return inv;
+}
+
+function generateInvoicePdf_(inv, assignment, student, tutor, settings) {
+  const upiUri = buildUpiUri_(settings, inv.BalanceDue, inv.InvoiceNumber);
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;margin:32px;font-size:13px;line-height:1.5}' +
+    '.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #0f2942;padding-bottom:14px;margin-bottom:20px}' +
+    '.brand{font-size:22px;font-weight:bold;color:#0f2942}.meta{text-align:right;font-size:12px;color:#475569}' +
+    'table{width:100%;border-collapse:collapse;margin:18px 0}th{background:#f1f5f9;text-align:left;padding:10px;border-bottom:1px solid #cbd5e1;color:#0f2942}' +
+    'td{padding:10px;border-bottom:1px solid #e2e8f0}.num{text-align:right}.tot td{font-weight:bold;font-size:14px;background:#f8fafc;border-top:2px solid #0f2942}' +
+    '.box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-top:18px}' +
+    '.foot{margin-top:28px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:10px}' +
+    '</style></head><body>' +
+    '<div class="hdr"><div><div class="brand">TutorSync</div><div>Managed Tuition &amp; Academic Coordination</div></div>' +
+    '<div class="meta"><b>INVOICE:</b> ' + escapeHtml_(inv.InvoiceNumber) + '<br><b>Billing Month:</b> ' + escapeHtml_(inv.BillingMonth) +
+    '<br><b>Issue Date:</b> ' + todayIso_() + '<br><b>Due Date:</b> ' + escapeHtml_(inv.DueDate) + '</div></div>' +
+    '<p><b>Billed To:</b> ' + escapeHtml_(student ? student.ParentOrStudentName : inv.StudentId) + ' (' + escapeHtml_(inv.StudentId) + ')<br>' +
+    '<b>Email:</b> ' + escapeHtml_(student ? student.Email : '') + ' | <b>Assignment:</b> ' + escapeHtml_(inv.AssignmentId) + '<br>' +
+    '<b>Assigned Tutor:</b> ' + escapeHtml_(tutor ? tutor.FullName : inv.TutorId) + ' | <b>Class / Mode:</b> ' + escapeHtml_(assignment.ClassGrade + ' · ' + assignment.TeachingMode) + '</p>' +
+    '<table><thead><tr><th>Description</th><th class="num">Amount (INR)</th></tr></thead><tbody>' +
+    '<tr><td>Monthly Tuition Fee (' + escapeHtml_(parseListField_(assignment.Subjects).join(', ')) + ')</td><td class="num">₹' + inv.BaseTuitionAmount.toFixed(2) + '</td></tr>' +
+    (inv.AdjustmentAmount !== 0 ? '<tr><td>Approved Adjustment (' + escapeHtml_(inv.AdjustmentNotes || 'Adjustment') + ')</td><td class="num">₹' + inv.AdjustmentAmount.toFixed(2) + '</td></tr>' : '') +
+    '<tr class="tot"><td>Total Amount Due</td><td class="num">₹' + inv.TotalAmount.toFixed(2) + '</td></tr>' +
+    '</tbody></table>' +
+    '<div class="box"><b>Payment Instructions &amp; Reference</b><br>' +
+    '<b>Payment Reference:</b> ' + escapeHtml_(inv.InvoiceNumber) + '<br>' +
+    (settings.MERCHANT_UPI_ID ? '<b>UPI ID:</b> ' + escapeHtml_(settings.MERCHANT_UPI_ID) + ' | <a href="' + escapeHtml_(upiUri) + '">Pay via UPI App</a><br>' : '') +
+    escapeHtml_(settings.PAYMENT_INSTRUCTIONS || '') + '</div>' +
+    '<div class="foot">TutorSync is a managed tuition coordination service and is not a licensed payment gateway or escrow institution. Support: ' + escapeHtml_(settings.SUPPORT_EMAIL || '') + '</div>' +
+    '</body></html>';
+
+  const rootFolder = DriveApp.getFolderById(settings.DRIVE_INVOICE_FOLDER_ID);
+  const monthFolder = getOrCreateFolder_(rootFolder, inv.BillingMonth);
+  const pdfBlob = Utilities.newBlob(html, 'text/html', inv.InvoiceNumber + '.html').getAs('application/pdf');
+  pdfBlob.setName(inv.InvoiceNumber + '.pdf');
+  const file = monthFolder.createFile(pdfBlob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { fileId: file.getId(), fileUrl: file.getUrl() };
+}
+
+function deliverInvoiceEmail_(inv, student, settings) {
+  try {
+    const attachment = inv.PdfFileId ? [DriveApp.getFileById(inv.PdfFileId).getAs('application/pdf')] : [];
+    const upiUri = buildUpiUri_(settings, inv.BalanceDue, inv.InvoiceNumber);
+    const htmlBody = '<p>Dear ' + escapeHtml_(student.ParentOrStudentName) + ',</p>' +
+      '<p>Please find attached your TutorSync tuition invoice <b>' + escapeHtml_(inv.InvoiceNumber) + '</b> for <b>' + escapeHtml_(inv.BillingMonth) + '</b>.</p>' +
+      '<p><b>Total Amount Due:</b> ₹' + Number(inv.TotalAmount).toFixed(2) + '<br><b>Due Date:</b> ' + escapeHtml_(inv.DueDate) + '<br><b>Payment Reference:</b> ' + escapeHtml_(inv.InvoiceNumber) + '</p>' +
+      (upiUri ? '<p><a href="' + escapeHtml_(upiUri) + '">Pay Now via UPI App (' + escapeHtml_(settings.MERCHANT_UPI_ID) + ')</a></p>' : '') +
+      '<p>' + escapeHtml_(settings.PAYMENT_INSTRUCTIONS || '') + '</p>' +
+      '<p>View PDF: <a href="' + escapeHtml_(inv.PdfUrl) + '">Download Invoice PDF</a></p>';
+    sendNotificationEmail_('STUDENT', student.StudentId, student.Email, 'INVOICE_ISSUED',
+      'TutorSync Invoice ' + inv.InvoiceNumber + ' (' + inv.BillingMonth + ')', htmlBody, attachment, 'INV_EMAIL_' + inv.InvoiceId, 'HIGH');
+    updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, { DeliveryStatus: 'SENT', DeliveredAt: nowIso_(), UpdatedAt: nowIso_() });
+    inv.DeliveryStatus = 'SENT';
+  } catch (err) {
+    updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, { DeliveryStatus: 'FAILED', UpdatedAt: nowIso_() });
+    inv.DeliveryStatus = 'FAILED';
+  }
+}
+
+function handleAdminAdjustInvoice_(session, p) {
+  const inv = findRowByField_('Invoices', 'InvoiceId', p.invoiceId, false);
+  if (!inv) throw createApiError_('NOT_FOUND', 'Invoice not found.');
+  if (inv.PaymentStatus === 'PAID' || inv.PaymentStatus === 'CANCELLED') throw createApiError_('VALIDATION_ERROR', 'Cannot adjust a PAID or CANCELLED invoice.');
+  const adjAmt = round2_(Number(p.adjustmentAmount || 0));
+  const newTotal = round2_(Number(inv.BaseTuitionAmount) + adjAmt);
+  if (newTotal < Number(inv.AmountPaid)) throw createApiError_('VALIDATION_ERROR', 'Adjusted total cannot be less than amount already paid.');
+  const newBalance = round2_(newTotal - Number(inv.AmountPaid));
+  const settings = getSettingsMap_();
+  const updated = updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, {
+    AdjustmentAmount: adjAmt, AdjustmentNotes: cleanStr_(p.adjustmentNotes, 300),
+    TotalAmount: newTotal, BalanceDue: newBalance,
+    PaymentStatus: newBalance <= 0 ? 'PAID' : (Number(inv.AmountPaid) > 0 ? 'PARTIALLY_PAID' : inv.PaymentStatus), UpdatedAt: nowIso_()
+  });
+  const pdfInfo = generateInvoicePdf_(updated, findRowByField_('Assignments', 'AssignmentId', inv.AssignmentId, true),
+    findRowByField_('Students', 'StudentId', inv.StudentId, true), findRowByField_('Tutors', 'TutorId', inv.TutorId, true), settings);
+  const finalInv = updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, { PdfFileId: pdfInfo.fileId, PdfUrl: pdfInfo.fileUrl });
+  writeAudit_(session.userId, 'ADMIN', 'INVOICE_ADJUSTED', 'Invoices', inv.InvoiceId, inv, finalInv, p.adjustmentNotes || 'Adjustment applied');
+  return finalInv;
+}
+
+function handleAdminVoidInvoice_(session, p) {
+  const inv = findRowByField_('Invoices', 'InvoiceId', p.invoiceId, false);
+  if (!inv) throw createApiError_('NOT_FOUND', 'Invoice not found.');
+  if (Number(inv.AmountPaid) > 0) throw createApiError_('VALIDATION_ERROR', 'Cannot cancel an invoice with recorded payments.');
+  const updated = updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, { PaymentStatus: 'CANCELLED', BalanceDue: 0, UpdatedAt: nowIso_() });
+  writeAudit_(session.userId, 'ADMIN', 'INVOICE_CANCELLED', 'Invoices', inv.InvoiceId, inv, updated, cleanStr_(p.reason, 300) || 'Admin voided');
+  return updated;
+}
+
+function handleAdminResendInvoiceEmail_(session, p) {
+  const inv = findRowByField_('Invoices', 'InvoiceId', p.invoiceId, false);
+  if (!inv) throw createApiError_('NOT_FOUND', 'Invoice not found.');
+  const student = findRowByField_('Students', 'StudentId', inv.StudentId, true);
+  if (!student) throw createApiError_('NOT_FOUND', 'Student not found.');
+  deliverInvoiceEmail_(inv, student, getSettingsMap_());
+  writeAudit_(session.userId, 'ADMIN', 'INVOICE_RESENT', 'Invoices', inv.InvoiceId, null, { email: student.Email }, 'Resent email');
+  return inv;
+}
+
+function handleStudentSubmitPaymentClaim_(session, p) {
+  const invoiceId = cleanStr_(p.invoiceId, 30);
+  const amount = round2_(Number(p.amount));
+  const txRef = cleanStr_(p.transactionRef, 100);
+  const payDate = cleanStr_(p.paymentDate || todayIso_(), 20);
+  const method = cleanStr_(p.paymentMethod || 'UPI', 30).toUpperCase();
+
+  const inv = findRowByField_('Invoices', 'InvoiceId', invoiceId, false);
+  if (!inv || inv.StudentId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Invoice not found or unauthorized.');
+  if (inv.PaymentStatus === 'PAID' || inv.PaymentStatus === 'CANCELLED') throw createApiError_('VALIDATION_ERROR', 'Invoice is already ' + inv.PaymentStatus);
+  if (!amount || amount <= 0 || amount > round2_(Number(inv.BalanceDue) + 0.01)) throw createApiError_('VALIDATION_ERROR', 'Invalid payment amount.');
+  if (txRef.length < 4) throw createApiError_('VALIDATION_ERROR', 'Please enter a valid UPI UTR / Transaction Reference.');
+
+  const dupPay = getAllRows_('Payments', true).some(function (x) { return String(x.TransactionRef).toLowerCase() === txRef.toLowerCase(); });
+  const dupClaim = getAllRows_('PaymentClaims', true).some(function (x) { return x.Status === 'PENDING_VERIFICATION' && String(x.TransactionRef).toLowerCase() === txRef.toLowerCase(); });
+  if (dupPay || dupClaim) throw createApiError_('DUPLICATE_ERROR', 'This transaction reference has already been submitted.');
+
+  const now = nowIso_();
+  const claim = {
+    ClaimId: generateId_('PaymentClaims', 'CLM'), InvoiceId: inv.InvoiceId, InvoiceNumber: inv.InvoiceNumber,
+    StudentId: session.linkedEntityId, Amount: amount, PaymentDate: payDate, PaymentMethod: method,
+    TransactionRef: txRef, Notes: cleanStr_(p.notes, 300), Status: 'PENDING_VERIFICATION',
+    ReviewedBy: '', ReviewedAt: '', ReviewNotes: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('PaymentClaims', claim);
+  notifyAdmin_('Gate 3: UTR Payment Claim ' + claim.ClaimId + ' (₹' + amount + ')',
+    '<p>Student <b>' + inv.StudentId + '</b> submitted UTR <b>' + escapeHtml_(txRef) + '</b> for invoice <b>' + escapeHtml_(inv.InvoiceNumber) + '</b> (₹' + amount.toFixed(2) + ').</p><p>Verify in Admin → Critical Gates Inbox.</p>'
+  );
+  return claim;
+}
+
+function handleAdminReviewPaymentClaim_(session, p) {
+  const claim = findRowByField_('PaymentClaims', 'ClaimId', p.claimId, true);
+  if (!claim) throw createApiError_('NOT_FOUND', 'Payment claim not found.');
+  if (claim.Status !== 'PENDING_VERIFICATION') throw createApiError_('VALIDATION_ERROR', 'Claim already reviewed (' + claim.Status + ').');
+
+  const approve = p.approve === true;
+  const now = nowIso_();
+  if (!approve) {
+    const reason = cleanStr_(p.reviewNotes, 300);
+    if (!reason) throw createApiError_('VALIDATION_ERROR', 'Rejection reason is required.');
+    const rejected = updateRowByKey_('PaymentClaims', 'ClaimId', claim.ClaimId, {
+      Status: 'REJECTED', ReviewedBy: session.userId, ReviewedAt: now, ReviewNotes: reason, UpdatedAt: now
+    });
+    writeAudit_(session.userId, 'ADMIN', 'PAYMENT_CLAIM_REJECTED', 'PaymentClaims', claim.ClaimId, claim, rejected, reason);
+    return rejected;
+  }
+
+  const payRes = handleAdminRecordPayment_(session, {
+    invoiceId: claim.InvoiceId, amount: claim.Amount, paymentDate: claim.PaymentDate,
+    paymentMethod: claim.PaymentMethod, transactionRef: claim.TransactionRef,
+    notes: 'Verified from Student UTR Claim ' + claim.ClaimId + (claim.Notes ? ' | ' + claim.Notes : '')
+  });
+  const updated = updateRowByKey_('PaymentClaims', 'ClaimId', claim.ClaimId, {
+    Status: 'RECONCILED', ReviewedBy: session.userId, ReviewedAt: now, ReviewNotes: 'Verified & Reconciled', UpdatedAt: now
+  });
+  return { claim: updated, paymentResult: payRes };
+}
+
+function handleAdminListPayments_(p) {
+  let rows = getAllRows_('Payments', true);
+  if (p && p.invoiceId) rows = rows.filter(function (pay) { return pay.InvoiceId === p.invoiceId; });
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  return rows.map(function (pay) {
+    pay.StudentName = students[pay.StudentId] ? students[pay.StudentId].ParentOrStudentName : pay.StudentId;
+    return pay;
+  }).reverse();
+}
+
+function handleAdminRecordPayment_(session, p) {
+  const invoiceId = cleanStr_(p.invoiceId, 30);
+  const amount = round2_(Number(p.amount));
+  const method = cleanStr_(p.paymentMethod, 30).toUpperCase();
+  const txRef = cleanStr_(p.transactionRef, 100);
+  const payDate = cleanStr_(p.paymentDate || todayIso_(), 20);
+
+  if (!invoiceId || !amount || amount <= 0) throw createApiError_('VALIDATION_ERROR', 'Valid Invoice and positive payment amount required.');
+  if (!txRef) throw createApiError_('VALIDATION_ERROR', 'Transaction reference is required.');
+
+  const inv = findRowByField_('Invoices', 'InvoiceId', invoiceId, false);
+  if (!inv) throw createApiError_('NOT_FOUND', 'Invoice not found.');
+  if (inv.PaymentStatus === 'CANCELLED' || inv.PaymentStatus === 'PAID') throw createApiError_('VALIDATION_ERROR', 'Invoice is already ' + inv.PaymentStatus + '.');
+  if (amount > round2_(Number(inv.BalanceDue) + 0.01)) throw createApiError_('VALIDATION_ERROR', 'Payment amount exceeds remaining balance.');
+
+  const dup = getAllRows_('Payments', true).filter(function (pay) {
+    return pay.TransactionType === 'PAYMENT' && String(pay.TransactionRef).toLowerCase() === txRef.toLowerCase();
+  });
+  if (dup.length > 0) throw createApiError_('DUPLICATE_ERROR', 'Duplicate transaction reference "' + txRef + '" already recorded (' + dup[0].PaymentId + ').');
+
+  const settings = getSettingsMap_();
+  const now = nowIso_();
+  const paymentId = generateId_('Payments', 'PAY');
+  const receiptNo = (settings.RECEIPT_PREFIX || 'TS-RCP-') + currentMonthStr_().replace('-', '') + '-' + paymentId.split('-')[2];
+
+  const payment = {
+    PaymentId: paymentId, ReceiptNumber: receiptNo, InvoiceId: invoiceId, StudentId: inv.StudentId,
+    AssignmentId: inv.AssignmentId, TransactionType: 'PAYMENT', PaymentDate: payDate, Amount: amount,
+    PaymentMethod: method || 'UPI', TransactionRef: txRef, Notes: cleanStr_(p.notes, 300),
+    RecordedBy: session.userId, CreatedAt: now
+  };
+  appendRow_('Payments', payment);
+
+  const newPaid = round2_(Number(inv.AmountPaid) + amount);
+  const newBalance = Math.max(0, round2_(Number(inv.TotalAmount) - newPaid));
+  const newInvStatus = newBalance <= 0 ? 'PAID' : 'PARTIALLY_PAID';
+  updateRowByKey_('Invoices', 'InvoiceId', invoiceId, {
+    AmountPaid: newPaid, BalanceDue: newBalance, PaymentStatus: newInvStatus, UpdatedAt: now
+  });
+
+  const commRate = Number(inv.LockedCommissionPct);
+  const commAmt = round2_(amount * (commRate / 100));
+  const netPayable = round2_(amount - commAmt);
+  const ledgerEntry = {
+    LedgerId: generateId_('TutorLedger', 'LDG'), IdempotencyKey: paymentId + '_' + invoiceId,
+    TutorId: inv.TutorId, AssignmentId: inv.AssignmentId, InvoiceId: invoiceId, PaymentId: paymentId,
+    BillingMonth: inv.BillingMonth, EligibleCollectedAmount: amount, CommissionRatePct: commRate,
+    CommissionAmount: commAmt, TutorAdjustmentAmount: 0, AdjustmentReason: '', NetTutorPayable: netPayable,
+    PayoutStatus: 'PENDING', PayoutId: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('TutorLedger', ledgerEntry);
+  writeAudit_(session.userId, 'ADMIN', 'PAYMENT_RECORDED', 'Payments', paymentId, null, { payment: payment, ledger: ledgerEntry }, 'Payment reconciled');
+
+  const student = findRowByField_('Students', 'StudentId', inv.StudentId, true);
+  if (student && isValidEmail_(student.Email)) {
+    sendNotificationEmail_('STUDENT', student.StudentId, student.Email, 'PAYMENT_RECEIPT',
+      'TutorSync Receipt ' + receiptNo + ' — Invoice ' + inv.InvoiceNumber,
+      '<p>Dear ' + escapeHtml_(student.ParentOrStudentName) + ',</p><p>Payment of <b>₹' + amount.toFixed(2) + '</b> received for invoice <b>' + escapeHtml_(inv.InvoiceNumber) + '</b>.</p><p><b>Receipt:</b> ' + receiptNo + '<br><b>Ref:</b> ' + escapeHtml_(txRef) + '<br><b>Remaining Balance:</b> ₹' + newBalance.toFixed(2) + '</p>',
+      null, null, 'HIGH'
+    );
+  }
+  return { payment: payment, ledgerEntry: ledgerEntry, invoiceStatus: newInvStatus, balanceDue: newBalance };
+}
+
+function handleAdminRecordRefund_(session, p) {
+  const origPayment = findRowByField_('Payments', 'PaymentId', p.paymentId, true);
+  if (!origPayment || origPayment.TransactionType !== 'PAYMENT') throw createApiError_('NOT_FOUND', 'Original payment not found.');
+  const refundAmt = round2_(Number(p.amount));
+  if (!refundAmt || refundAmt <= 0 || refundAmt > Number(origPayment.Amount)) throw createApiError_('VALIDATION_ERROR', 'Invalid refund amount.');
+  const reason = cleanStr_(p.notes, 300);
+  if (!reason) throw createApiError_('VALIDATION_ERROR', 'Refund reason is required.');
+
+  const inv = findRowByField_('Invoices', 'InvoiceId', origPayment.InvoiceId, false);
+  const now = nowIso_();
+  const refundId = generateId_('Payments', 'PAY');
+  const settings = getSettingsMap_();
+  const receiptNo = (settings.RECEIPT_PREFIX || 'TS-RCP-') + 'REV-' + refundId.split('-')[2];
+
+  const refundRow = {
+    PaymentId: refundId, ReceiptNumber: receiptNo, InvoiceId: origPayment.InvoiceId, StudentId: origPayment.StudentId,
+    AssignmentId: origPayment.AssignmentId, TransactionType: 'REFUND_REVERSAL',
+    PaymentDate: cleanStr_(p.paymentDate || todayIso_(), 20), Amount: -refundAmt,
+    PaymentMethod: cleanStr_(p.paymentMethod || origPayment.PaymentMethod, 30),
+    TransactionRef: cleanStr_(p.transactionRef || ('REV-' + origPayment.TransactionRef), 100),
+    Notes: reason, RecordedBy: session.userId, CreatedAt: now
+  };
+  appendRow_('Payments', refundRow);
+
+  const newPaid = Math.max(0, round2_(Number(inv.AmountPaid) - refundAmt));
+  const newBalance = round2_(Number(inv.TotalAmount) - newPaid);
+  updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, {
+    AmountPaid: newPaid, BalanceDue: newBalance, PaymentStatus: newPaid === 0 ? 'ISSUED' : 'PARTIALLY_PAID', UpdatedAt: now
+  });
+
+  const commRate = Number(inv.LockedCommissionPct);
+  const commRev = round2_(refundAmt * (commRate / 100));
+  const netRev = round2_(refundAmt - commRev);
+  appendRow_('TutorLedger', {
+    LedgerId: generateId_('TutorLedger', 'LDG'), IdempotencyKey: refundId + '_' + inv.InvoiceId,
+    TutorId: inv.TutorId, AssignmentId: inv.AssignmentId, InvoiceId: inv.InvoiceId, PaymentId: refundId,
+    BillingMonth: inv.BillingMonth, EligibleCollectedAmount: -refundAmt, CommissionRatePct: commRate,
+    CommissionAmount: -commRev, TutorAdjustmentAmount: 0, AdjustmentReason: 'Refund reversal: ' + reason,
+    NetTutorPayable: -netRev, PayoutStatus: 'PENDING', PayoutId: '', CreatedAt: now, UpdatedAt: now
+  });
+
+  writeAudit_(session.userId, 'ADMIN', 'PAYMENT_REFUNDED', 'Payments', refundId, origPayment, refundRow, reason);
+  return refundRow;
+}
+
+function handleAdminListTutorLedger_(p) {
+  let rows = getAllRows_('TutorLedger', true);
+  if (p && p.tutorId) rows = rows.filter(function (l) { return l.TutorId === p.tutorId; });
+  if (p && p.payoutStatus) rows = rows.filter(function (l) { return l.PayoutStatus === p.payoutStatus; });
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  return rows.map(function (l) { l.TutorName = tutors[l.TutorId] ? tutors[l.TutorId].FullName : l.TutorId; return l; }).reverse();
+}
+
+function handleAdminAddTutorAdjustment_(session, p) {
+  const ledger = findRowByField_('TutorLedger', 'LedgerId', p.ledgerId, true);
+  if (!ledger) throw createApiError_('NOT_FOUND', 'Ledger entry not found.');
+  if (ledger.PayoutStatus !== 'PENDING') throw createApiError_('VALIDATION_ERROR', 'Only PENDING ledger entries can be adjusted.');
+  const adj = round2_(Number(p.adjustmentAmount));
+  const reason = cleanStr_(p.reason, 300);
+  if (!reason) throw createApiError_('VALIDATION_ERROR', 'Adjustment reason is required.');
+  const newNet = round2_(Number(ledger.EligibleCollectedAmount) - Number(ledger.CommissionAmount) + adj);
+  const updated = updateRowByKey_('TutorLedger', 'LedgerId', ledger.LedgerId, {
+    TutorAdjustmentAmount: adj, AdjustmentReason: reason, NetTutorPayable: newNet, UpdatedAt: nowIso_()
+  });
+  writeAudit_(session.userId, 'ADMIN', 'TUTOR_LEDGER_ADJUSTED', 'TutorLedger', ledger.LedgerId, ledger, updated, reason);
+  return updated;
+}
+
+function handleAdminListPayouts_(p) {
+  let rows = getAllRows_('Payouts', true);
+  if (p && p.status) rows = rows.filter(function (r) { return r.Status === p.status; });
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  return rows.map(function (r) {
+    const t = tutors[r.TutorId];
+    r.TutorName = t ? t.FullName : r.TutorId;
+    r.TutorUpiId = t ? (t.UpiId || '') : '';
+    return r;
+  }).reverse();
+}
+
+function runPayoutBatchCore_(tutorId, periodLabel, minThreshold, actorId, actorRole) {
+  const pending = getAllRows_('TutorLedger', true).filter(function (l) {
+    return l.PayoutStatus === 'PENDING' && (!tutorId || l.TutorId === tutorId);
+  });
+  if (pending.length === 0) return { batchCode: '', payouts: [] };
+
+  const grouped = {};
+  pending.forEach(function (l) {
+    if (!grouped[l.TutorId]) grouped[l.TutorId] = [];
+    grouped[l.TutorId].push(l);
+  });
+
+  const batchCode = 'BATCH-' + periodLabel + '-' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'ddHHmm');
+  const now = nowIso_();
+  const createdPayouts = [];
+
+  Object.keys(grouped).forEach(function (tId) {
+    const lines = grouped[tId];
+    let gross = 0, comm = 0, adj = 0, net = 0;
+    lines.forEach(function (l) {
+      gross += Number(l.EligibleCollectedAmount);
+      comm += Number(l.CommissionAmount);
+      adj += Number(l.TutorAdjustmentAmount || 0);
+      net += Number(l.NetTutorPayable);
+    });
+    if (round2_(net) <= 0 || round2_(net) < Number(minThreshold || 0)) return;
+
+    const payoutId = generateId_('Payouts', 'POT');
+    const payout = {
+      PayoutId: payoutId, BatchCode: batchCode, TutorId: tId, PeriodLabel: periodLabel,
+      GrossCollectedTotal: round2_(gross), CommissionTotal: round2_(comm), AdjustmentTotal: round2_(adj),
+      NetPayoutAmount: round2_(net), Status: 'PENDING', ApprovedBy: '', ApprovedAt: '',
+      PayoutMethod: '', PayoutReference: '', PayoutDate: '', EvidenceUrl: '', StatementPdfUrl: '',
+      PaidBy: '', CreatedAt: now, UpdatedAt: now
+    };
+    appendRow_('Payouts', payout);
+    lines.forEach(function (l) { updateRowByKey_('TutorLedger', 'LedgerId', l.LedgerId, { PayoutStatus: 'IN_BATCH', PayoutId: payoutId, UpdatedAt: now }); });
+    createdPayouts.push(payout);
+    writeAudit_(actorId, actorRole, 'PAYOUT_BATCH_CREATED', 'Payouts', payoutId, null, payout, 'Batch ' + batchCode);
+  });
+  return { batchCode: batchCode, payouts: createdPayouts };
+}
+
+function handleAdminCreatePayoutBatch_(session, p) {
+  const periodLabel = cleanStr_(p.periodLabel || currentMonthStr_(), 30);
+  const res = runPayoutBatchCore_(cleanStr_(p.tutorId, 30), periodLabel, 0, session.userId, 'ADMIN');
+  if (res.payouts.length === 0) throw createApiError_('VALIDATION_ERROR', 'No positive PENDING tutor ledger entries available.');
+  return res;
+}
+
+function handleAdminApprovePayout_(session, p) {
+  const payout = findRowByField_('Payouts', 'PayoutId', p.payoutId, true);
+  if (!payout) throw createApiError_('NOT_FOUND', 'Payout not found.');
+  if (payout.Status !== 'PENDING') throw createApiError_('VALIDATION_ERROR', 'Only PENDING payouts can be approved.');
+  const updated = updateRowByKey_('Payouts', 'PayoutId', payout.PayoutId, {
+    Status: 'APPROVED', ApprovedBy: session.userId, ApprovedAt: nowIso_(), UpdatedAt: nowIso_()
+  });
+  writeAudit_(session.userId, 'ADMIN', 'PAYOUT_APPROVED', 'Payouts', payout.PayoutId, payout, updated, 'Approved for transfer');
+  return updated;
+}
+
+function handleAdminMarkPayoutPaid_(session, p) {
+  const payout = findRowByField_('Payouts', 'PayoutId', p.payoutId, true);
+  if (!payout) throw createApiError_('NOT_FOUND', 'Payout not found.');
+  if (payout.Status !== 'APPROVED' && payout.Status !== 'PENDING') throw createApiError_('VALIDATION_ERROR', 'Payout already ' + payout.Status + '.');
+  const method = cleanStr_(p.payoutMethod, 30).toUpperCase();
+  const ref = cleanStr_(p.payoutReference, 100);
+  const payDate = cleanStr_(p.payoutDate, 20);
+  if (!method || !ref || !payDate) throw createApiError_('VALIDATION_ERROR', 'Payout Method, UTR Reference, and Date are strictly required.');
+
+  const settings = getSettingsMap_();
+  const tutor = findRowByField_('Tutors', 'TutorId', payout.TutorId, true);
+  const ledgerLines = getAllRows_('TutorLedger', true).filter(function (l) { return l.PayoutId === payout.PayoutId; });
+  const statementUrl = generatePayoutStatementPdf_(payout, tutor, ledgerLines, method, ref, payDate, settings);
+
+  const now = nowIso_();
+  const updated = updateRowByKey_('Payouts', 'PayoutId', payout.PayoutId, {
+    Status: 'PAID', ApprovedBy: payout.ApprovedBy || session.userId, ApprovedAt: payout.ApprovedAt || now,
+    PayoutMethod: method, PayoutReference: ref, PayoutDate: payDate,
+    EvidenceUrl: cleanStr_(p.evidenceUrl, 300), StatementPdfUrl: statementUrl, PaidBy: session.userId, UpdatedAt: now
+  });
+  ledgerLines.forEach(function (l) { updateRowByKey_('TutorLedger', 'LedgerId', l.LedgerId, { PayoutStatus: 'PAID', UpdatedAt: now }); });
+  writeAudit_(session.userId, 'ADMIN', 'PAYOUT_MARKED_PAID', 'Payouts', payout.PayoutId, payout, updated, 'UTR: ' + ref);
+
+  if (tutor && isValidEmail_(tutor.Email)) {
+    sendNotificationEmail_('TUTOR', tutor.TutorId, tutor.Email, 'PAYOUT_PAID',
+      'TutorSync Payout Disbursed — ' + payout.PayoutId + ' (₹' + Number(payout.NetPayoutAmount).toFixed(2) + ')',
+      '<p>Dear ' + escapeHtml_(tutor.FullName) + ',</p><p>Your payout <b>' + payout.PayoutId + '</b> (₹' + Number(payout.NetPayoutAmount).toFixed(2) + ') has been transferred.</p><p><b>Method/Ref:</b> ' + escapeHtml_(method + ' · ' + ref) + '<br><b>Date:</b> ' + escapeHtml_(payDate) + '</p><p><a href="' + escapeHtml_(statementUrl) + '">Download Payout Statement PDF</a></p>',
+      null, null, 'HIGH'
+    );
+  }
+  return updated;
+}
+
+function generatePayoutStatementPdf_(payout, tutor, lines, method, ref, payDate, settings) {
+  let rowsHtml = '';
+  lines.forEach(function (l) {
+    rowsHtml += '<tr><td>' + escapeHtml_(l.AssignmentId) + '</td><td>' + escapeHtml_(l.BillingMonth) + '</td>' +
+      '<td class="num">₹' + Number(l.EligibleCollectedAmount).toFixed(2) + '</td>' +
+      '<td class="num">' + Number(l.CommissionRatePct) + '% (₹' + Number(l.CommissionAmount).toFixed(2) + ')</td>' +
+      '<td class="num">₹' + Number(l.TutorAdjustmentAmount || 0).toFixed(2) + '</td>' +
+      '<td class="num"><b>₹' + Number(l.NetTutorPayable).toFixed(2) + '</b></td></tr>';
+  });
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;color:#1e293b;margin:32px;font-size:12px}h2{color:#0f2942;border-bottom:2px solid #0f2942;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:8px;text-align:left}td{padding:8px;border-bottom:1px solid #e2e8f0}.num{text-align:right}</style></head><body>' +
+    '<h2>TutorSync — Tutor Payout Statement</h2><p><b>Payout ID:</b> ' + escapeHtml_(payout.PayoutId) + ' | <b>Batch:</b> ' + escapeHtml_(payout.BatchCode) + '<br>' +
+    '<b>Tutor:</b> ' + escapeHtml_(tutor ? tutor.FullName : payout.TutorId) + ' (' + escapeHtml_(payout.TutorId) + ')<br>' +
+    '<b>Method:</b> ' + escapeHtml_(method) + ' | <b>Reference:</b> ' + escapeHtml_(ref) + ' | <b>Date:</b> ' + escapeHtml_(payDate) + '</p>' +
+    '<table><thead><tr><th>Assignment</th><th>Month</th><th class="num">Collected</th><th class="num">Commission</th><th class="num">Adj.</th><th class="num">Net Payable</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+    '<p><b>Total Net Disbursed: ₹' + Number(payout.NetPayoutAmount).toFixed(2) + '</b></p></body></html>';
+  const folder = DriveApp.getFolderById(settings.DRIVE_PAYOUT_FOLDER_ID);
+  const blob = Utilities.newBlob(html, 'text/html', payout.PayoutId + '.html').getAs('application/pdf');
+  blob.setName('PayoutStatement_' + payout.PayoutId + '.pdf');
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getUrl();
+}
+
+/* ============================================================================
+ * 9. PORTAL HANDLERS (STUDENT / TUTOR)
+ * ============================================================================ */
+
+function handleStudentDashboard_(session) {
+  const student = findRowByField_('Students', 'StudentId', session.linkedEntityId, false);
+  if (!student) throw createApiError_('NOT_FOUND', 'Student profile not found.');
+  const assignments = getAllRows_('Assignments', false).filter(function (a) { return a.StudentId === student.StudentId; });
+  const tutors = indexBy_(getAllRows_('Tutors', true), 'TutorId');
+  const sessions = getAllRows_('Sessions', false).filter(function (s) { return s.StudentId === student.StudentId; }).slice(-20).reverse();
+  const invoices = getAllRows_('Invoices', false).filter(function (i) { return i.StudentId === student.StudentId && i.PaymentStatus !== 'CANCELLED'; });
+
+  const enrichedAssignments = assignments.map(function (a) {
+    const t = tutors[a.TutorId];
+    const unlocked = (a.Status === 'ACCEPTED' || a.Status === 'ACTIVE' || a.Status === 'COMPLETED');
+    return {
+      AssignmentId: a.AssignmentId, Subjects: a.Subjects, ClassGrade: a.ClassGrade, TeachingMode: a.TeachingMode,
+      AgreedMonthlyFee: a.AgreedMonthlyFee, SessionsPerWeek: a.SessionsPerWeek, SessionDurationMins: a.SessionDurationMins,
+      StartDate: a.StartDate, PaymentDueDay: a.PaymentDueDay, Status: a.Status,
+      IsTrialEnabled: a.IsTrialEnabled === true || a.IsTrialEnabled === 'TRUE',
+      TrialStatus: a.TrialStatus || 'NONE', TrialDate: a.TrialDate || '',
+      StudentConfirmed: a.StudentConfirmed === true || a.StudentConfirmed === 'TRUE',
+      TutorConfirmed: a.TutorConfirmed === true || a.TutorConfirmed === 'TRUE',
+      TutorName: t ? t.FullName : a.TutorId, TutorQualifications: t ? t.Qualifications : '',
+      TutorPhone: unlocked && t ? t.Phone : 'Unlocked upon activation', TutorEmail: unlocked && t ? t.Email : ''
+    };
+  });
+  return { profile: student, assignments: enrichedAssignments, sessions: sessions, invoices: invoices.reverse() };
+}
+
+function handleStudentInvoices_(session) {
+  const settings = getSettingsMap_();
+  const claims = getAllRows_('PaymentClaims', true).filter(function (c) { return c.StudentId === session.linkedEntityId; }).reverse();
+  const invoices = getAllRows_('Invoices', false).filter(function (i) {
+    return i.StudentId === session.linkedEntityId && i.PaymentStatus !== 'CANCELLED';
+  }).reverse().map(function (inv) {
+    inv.UpiUri = Number(inv.BalanceDue) > 0 ? buildUpiUri_(settings, inv.BalanceDue, inv.InvoiceNumber) : '';
+    return inv;
+  });
+  return {
+    invoices: invoices,
+    claims: claims,
+    merchantUpiId: settings.MERCHANT_UPI_ID || '',
+    paymentInstructions: settings.PAYMENT_INSTRUCTIONS || ''
+  };
+}
+
+function handleStudentPayments_(session) {
+  return getAllRows_('Payments', true).filter(function (p) { return p.StudentId === session.linkedEntityId; }).reverse();
+}
+
+function handleStudentConfirmSession_(session, p) {
+  const ses = findRowByField_('Sessions', 'SessionId', p.sessionId, false);
+  if (!ses || ses.StudentId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Unauthorized.');
+  return updateRowByKey_('Sessions', 'SessionId', ses.SessionId, { StudentConfirmed: true, UpdatedAt: nowIso_() });
+}
+
+function handleTutorDashboard_(session) {
+  const tutor = findRowByField_('Tutors', 'TutorId', session.linkedEntityId, false);
+  if (!tutor) throw createApiError_('NOT_FOUND', 'Tutor profile not found.');
+  const assignments = getAllRows_('Assignments', false).filter(function (a) { return a.TutorId === tutor.TutorId; });
+  const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+  const sessions = getAllRows_('Sessions', false).filter(function (s) { return s.TutorId === tutor.TutorId; }).slice(-25).reverse();
+  const ledger = getAllRows_('TutorLedger', true).filter(function (l) { return l.TutorId === tutor.TutorId; });
+
+  let pendingEarnings = 0, paidEarnings = 0;
+  ledger.forEach(function (l) {
+    if (l.PayoutStatus === 'PAID') paidEarnings += Number(l.NetTutorPayable);
+    else if (l.PayoutStatus !== 'REVERSED') pendingEarnings += Number(l.NetTutorPayable);
+  });
+
+  const enrichedAssignments = assignments.map(function (a) {
+    const s = students[a.StudentId];
+    const unlocked = (a.Status === 'ACCEPTED' || a.Status === 'ACTIVE' || a.Status === 'COMPLETED');
+    return {
+      AssignmentId: a.AssignmentId, Subjects: a.Subjects, ClassGrade: a.ClassGrade, TeachingMode: a.TeachingMode,
+      AgreedMonthlyFee: a.AgreedMonthlyFee, CommissionRatePct: a.CommissionRatePct,
+      SessionsPerWeek: a.SessionsPerWeek, SessionDurationMins: a.SessionDurationMins, StartDate: a.StartDate, Status: a.Status,
+      IsTrialEnabled: a.IsTrialEnabled === true || a.IsTrialEnabled === 'TRUE', TrialStatus: a.TrialStatus || 'NONE',
+      StudentConfirmed: a.StudentConfirmed === true || a.StudentConfirmed === 'TRUE',
+      TutorConfirmed: a.TutorConfirmed === true || a.TutorConfirmed === 'TRUE',
+      StudentName: unlocked && s ? s.ParentOrStudentName : ('Student ' + a.StudentId),
+      StudentArea: s ? (s.AreaLocality + (s.PinCode ? ' (' + s.PinCode + ')' : '')) : '',
+      StudentPhone: unlocked && s ? s.Phone : 'Unlocked upon activation', StudentWhatsApp: unlocked && s ? s.WhatsApp : ''
+    };
+  });
+  return { profile: tutor, assignments: enrichedAssignments, sessions: sessions, summary: { pendingEarnings: round2_(pendingEarnings), paidEarnings: round2_(paidEarnings) } };
+}
+
+function handleTutorUpdatePayoutProfile_(session, p) {
+  const upiId = cleanStr_(p.upiId, 80);
+  const bankMasked = cleanStr_(p.bankAccountMasked, 100);
+  if (upiId && upiId.indexOf('@') === -1) throw createApiError_('VALIDATION_ERROR', 'Enter a valid UPI ID (e.g. name@okaxis).');
+  const updated = updateRowByKey_('Tutors', 'TutorId', session.linkedEntityId, {
+    UpiId: upiId, BankAccountMasked: bankMasked, UpdatedAt: nowIso_()
+  });
+  writeAudit_(session.userId, 'TUTOR', 'PAYOUT_PROFILE_UPDATED', 'Tutors', session.linkedEntityId, null, { UpiId: upiId }, 'Tutor updated payout profile');
+  return updated;
+}
+
+function handleTutorOpportunities_(session) {
+  const tutor = findRowByField_('Tutors', 'TutorId', session.linkedEntityId, false);
+  if (!tutor || ['VERIFIED', 'ACTIVE'].indexOf(tutor.Status) === -1) throw createApiError_('FORBIDDEN', 'Only verified tutors can view opportunities.');
+  const assignedStudents = {};
+  getAllRows_('Assignments', false).forEach(function (a) { if (a.Status === 'ACTIVE') assignedStudents[a.StudentId] = true; });
+  const expressedMap = {};
+  getAllRows_('Matches', false).filter(function (m) { return m.TutorId === tutor.TutorId; }).forEach(function (m) {
+    if (m.TutorExpressedInterest === true || m.TutorExpressedInterest === 'TRUE') expressedMap[m.StudentId] = true;
+  });
+  return getAllRows_('Students', false).filter(function (s) {
+    return (s.Status === 'VERIFIED' || s.Status === 'ACTIVE') && !assignedStudents[s.StudentId];
+  }).map(function (s) {
+    return {
+      OpportunityId: s.StudentId, ClassGrade: s.ClassGrade, Board: s.Board,
+      SubjectsRequired: parseListField_(s.SubjectsRequired), TeachingMode: s.TeachingMode,
+      GeneralArea: s.TeachingMode === 'ONLINE' ? 'Online' : (s.AreaLocality ? s.AreaLocality.split(',')[0] : '') + (s.PinCode ? ' - ' + s.PinCode : ''),
+      PreferredDays: parseListField_(s.PreferredDays), PreferredTime: s.PreferredTime,
+      BudgetPerMonth: s.BudgetPerMonth, AlreadyExpressed: !!expressedMap[s.StudentId]
+    };
+  });
+}
+
+function handleTutorExpressInterest_(session, p) {
+  const tutor = findRowByField_('Tutors', 'TutorId', session.linkedEntityId, false);
+  const student = findRowByField_('Students', 'StudentId', p.studentId, false);
+  if (!tutor || ['VERIFIED', 'ACTIVE'].indexOf(tutor.Status) === -1) throw createApiError_('FORBIDDEN', 'Tutor not verified.');
+  if (!student) throw createApiError_('NOT_FOUND', 'Opportunity not found.');
+
+  const existing = getAllRows_('Matches', false).filter(function (m) { return m.StudentId === student.StudentId && m.TutorId === tutor.TutorId; })[0];
+  const now = nowIso_();
+  if (existing) {
+    return updateRowByKey_('Matches', 'MatchId', existing.MatchId, {
+      TutorExpressedInterest: true,
+      MatchingNotes: (existing.MatchingNotes ? existing.MatchingNotes + ' | ' : '') + 'Tutor note: ' + cleanStr_(p.note, 200),
+      UpdatedAt: now
+    });
+  }
+  const scoreObj = computeMatchScore_(student, tutor);
+  const m = {
+    MatchId: generateId_('Matches', 'MTH'), StudentId: student.StudentId, TutorId: tutor.TutorId,
+    MatchScore: scoreObj.score, ScoreBreakdownJson: JSON.stringify(scoreObj), TutorExpressedInterest: true,
+    ShortlistStatus: 'SUGGESTED', MatchingNotes: cleanStr_(p.note, 200), CreatedBy: 'TUTOR_INTEREST',
+    IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('Matches', m);
+  notifyAdmin_('Gate 2: Tutor Interested (' + tutor.TutorId + ' -> ' + student.StudentId + ')',
+    '<p>Tutor <b>' + escapeHtml_(tutor.FullName) + '</b> expressed interest in <b>' + student.StudentId + '</b> (Score: ' + scoreObj.score + '/100). Review in Critical Gates Inbox.</p>'
+  );
+  return m;
+}
+
+function handleParticipantConfirmAssignment_(session, p) {
+  const asg = findRowByField_('Assignments', 'AssignmentId', p.assignmentId, false);
+  if (!asg) throw createApiError_('NOT_FOUND', 'Assignment not found.');
+  if (session.role === 'STUDENT' && asg.StudentId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Unauthorized.');
+  if (session.role === 'TUTOR' && asg.TutorId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Unauthorized.');
+
+  const now = nowIso_();
+  const updates = { UpdatedAt: now };
+  if (session.role === 'STUDENT') { updates.StudentConfirmed = true; updates.StudentConfirmedAt = now; }
+  else { updates.TutorConfirmed = true; updates.TutorConfirmedAt = now; }
+
+  const stuConf = updates.StudentConfirmed || (asg.StudentConfirmed === true || asg.StudentConfirmed === 'TRUE');
+  const tutConf = updates.TutorConfirmed || (asg.TutorConfirmed === true || asg.TutorConfirmed === 'TRUE');
+  let activatedNow = false;
+  if (stuConf && tutConf && (asg.Status === 'OFFERED' || asg.Status === 'PROPOSED' || asg.Status === 'ACCEPTED')) {
+    updates.Status = 'ACTIVE';
+    activatedNow = true;
+    updateRowByKey_('Students', 'StudentId', asg.StudentId, { Status: 'ACTIVE', UpdatedAt: now });
+    updateRowByKey_('Tutors', 'TutorId', asg.TutorId, { Status: 'ACTIVE', UpdatedAt: now });
+    CacheService.getScriptCache().remove('TS_PUBLIC_DIR_V1');
+  } else if (asg.Status === 'OFFERED') {
+    updates.Status = 'ACCEPTED';
+  }
+  const updated = updateRowByKey_('Assignments', 'AssignmentId', asg.AssignmentId, updates);
+  if (activatedNow) autoGenerateInitialSessions_(updated);
+  writeAudit_(session.userId, session.role, 'ASSIGNMENT_CONFIRMED_BY_PARTICIPANT', 'Assignments', asg.AssignmentId, null, updates, 'Portal confirmation');
+  return updated;
+}
+
+function handleTutorLogSession_(session, p) {
+  const assignment = findRowByField_('Assignments', 'AssignmentId', p.assignmentId, false);
+  if (!assignment || assignment.TutorId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Assignment unauthorized.');
+  const status = cleanStr_(p.attendanceStatus || 'COMPLETED', 30).toUpperCase();
+  if (APP_CONSTANTS.SESSION_STATUSES.indexOf(status) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid status.');
+
+  const now = nowIso_();
+  if (p.sessionId) {
+    const ses = findRowByField_('Sessions', 'SessionId', p.sessionId, false);
+    if (!ses || ses.TutorId !== session.linkedEntityId) throw createApiError_('FORBIDDEN', 'Session unauthorized.');
+    return updateRowByKey_('Sessions', 'SessionId', ses.SessionId, { AttendanceStatus: status, TutorConfirmed: true, Notes: cleanStr_(p.notes, 500), UpdatedAt: now });
+  }
+  const newSes = {
+    SessionId: generateId_('Sessions', 'SES'), AssignmentId: assignment.AssignmentId,
+    StudentId: assignment.StudentId, TutorId: assignment.TutorId,
+    SessionDate: cleanStr_(p.sessionDate || todayIso_(), 20), StartTime: cleanStr_(p.startTime || '17:00', 10),
+    DurationMins: Math.max(15, Number(p.durationMins || assignment.SessionDurationMins || 60)),
+    SessionType: cleanStr_(p.sessionType || 'REGULAR', 20), AttendanceStatus: status,
+    TutorConfirmed: true, StudentConfirmed: false, Notes: cleanStr_(p.notes, 500),
+    AdminCorrected: false, AdminCorrectionReason: '', IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('Sessions', newSes);
+  return newSes;
+}
+
+function handleTutorEarnings_(session) {
+  return {
+    ledger: getAllRows_('TutorLedger', true).filter(function (l) { return l.TutorId === session.linkedEntityId; }).reverse(),
+    payouts: getAllRows_('Payouts', true).filter(function (p) { return p.TutorId === session.linkedEntityId; }).reverse()
+  };
+}
+
+function handlePortalCreateTicket_(session, p) {
+  const subject = cleanStr_(p.subject, 150);
+  const desc = cleanStr_(p.description, 1500);
+  if (!subject || !desc) throw createApiError_('VALIDATION_ERROR', 'Subject and description are required.');
+  const now = nowIso_();
+  const ticket = {
+    TicketId: generateId_('SupportTickets', 'TKT'), RaisedByRole: session.role, LinkedEntityId: session.linkedEntityId,
+    ContactName: session.email, ContactEmail: session.email, ContactPhone: '',
+    Category: cleanStr_(p.category || 'GENERAL', 30).toUpperCase(), Subject: subject, Description: desc,
+    AssignmentId: cleanStr_(p.assignmentId, 30), Status: 'OPEN', AdminResponse: '', ResolvedBy: '', ResolvedAt: '',
+    IsDeleted: false, DeletedAt: '', DeletedBy: '', CreatedAt: now, UpdatedAt: now
+  };
+  appendRow_('SupportTickets', ticket);
+  notifyAdmin_('Support Ticket: ' + ticket.TicketId, '<p>From: ' + session.role + ' (' + session.linkedEntityId + ')<br>Subject: ' + escapeHtml_(subject) + '</p>');
+  return ticket;
+}
+
+function handlePortalGetTickets_(session) {
+  return getAllRows_('SupportTickets', false).filter(function (t) {
+    return t.LinkedEntityId === session.linkedEntityId && t.RaisedByRole === session.role;
+  }).reverse();
+}
+
+/* ============================================================================
+ * 10. ADMIN DASHBOARD, NOTIFICATIONS, SETTINGS, REPORTS & TRIGGERS
+ * ============================================================================ */
+
+function handleAdminDashboard_() {
+  const students = getAllRows_('Students', false);
+  const tutors = getAllRows_('Tutors', false);
+  const assignments = getAllRows_('Assignments', false);
+  const invoices = getAllRows_('Invoices', false);
+  const payments = getAllRows_('Payments', true);
+  const ledger = getAllRows_('TutorLedger', true);
+  const payouts = getAllRows_('Payouts', true);
+  const claims = getAllRows_('PaymentClaims', true);
+  const matches = getAllRows_('Matches', false);
+  const tickets = getAllRows_('SupportTickets', false);
+  const audit = getAllRows_('AuditLog', true);
+  const curMonth = currentMonthStr_();
+
+  let verifiedStudents = 0, newStudents = 0, pendingVerif = 0;
+  students.forEach(function (s) {
+    if (s.Status === 'VERIFIED' || s.Status === 'ACTIVE') verifiedStudents++;
+    if (s.Status === 'NEW') newStudents++;
+    if (s.Status === 'NEW' || s.Status === 'UNDER_REVIEW') pendingVerif++;
+  });
+  let verifiedTutors = 0, newTutors = 0;
+  tutors.forEach(function (t) {
+    if (t.Status === 'VERIFIED' || t.Status === 'ACTIVE') verifiedTutors++;
+    if (t.Status === 'NEW') newTutors++;
+    if (t.Status === 'NEW' || t.Status === 'UNDER_REVIEW') pendingVerif++;
+  });
+
+  const activeAssignStudentIds = {};
+  let activeAssignments = 0;
+  assignments.forEach(function (a) { if (a.Status === 'ACTIVE') { activeAssignments++; activeAssignStudentIds[a.StudentId] = true; } });
+  const pendingMatching = students.filter(function (s) { return (s.Status === 'VERIFIED' || s.Status === 'ACTIVE') && !activeAssignStudentIds[s.StudentId]; }).length;
+
+  let monthInvoiced = 0, outstandingReceivables = 0, overdueCount = 0, overdueAmount = 0;
+  invoices.forEach(function (i) {
+    if (i.PaymentStatus === 'CANCELLED') return;
+    if (i.BillingMonth === curMonth) monthInvoiced += Number(i.TotalAmount);
+    if (Number(i.BalanceDue) > 0) outstandingReceivables += Number(i.BalanceDue);
+    if (i.PaymentStatus === 'OVERDUE') { overdueCount++; overdueAmount += Number(i.BalanceDue); }
+  });
+
+  let monthCollected = 0;
+  payments.forEach(function (p) { if (String(p.PaymentDate).indexOf(curMonth) === 0) monthCollected += Number(p.Amount); });
+
+  let commissionEarned = 0, tutorPayable = 0;
+  ledger.forEach(function (l) {
+    commissionEarned += Number(l.CommissionAmount);
+    if (l.PayoutStatus === 'PENDING' || l.PayoutStatus === 'IN_BATCH') tutorPayable += Number(l.NetTutorPayable);
+  });
+
+  const pendingPayouts = payouts.filter(function (p) { return p.Status === 'PENDING' || p.Status === 'APPROVED'; }).length;
+  const pendingClaims = claims.filter(function (c) { return c.Status === 'PENDING_VERIFICATION'; }).length;
+  const interestedMatches = matches.filter(function (m) {
+    return (m.TutorExpressedInterest === true || m.TutorExpressedInterest === 'TRUE') && m.ShortlistStatus !== 'CONVERTED_TO_ASSIGNMENT' && m.ShortlistStatus !== 'REJECTED';
+  }).length;
+  const openTickets = tickets.filter(function (t) { return t.Status === 'OPEN' || t.Status === 'IN_PROGRESS'; }).length;
+
+  return {
+    kpis: {
+      totalStudents: students.length, verifiedStudents: verifiedStudents, totalTutors: tutors.length, verifiedTutors: verifiedTutors,
+      activeAssignments: activeAssignments, newRegistrations: newStudents + newTutors, pendingVerification: pendingVerif,
+      pendingMatching: pendingMatching, monthInvoiced: round2_(monthInvoiced), monthCollected: round2_(monthCollected),
+      outstandingReceivables: round2_(outstandingReceivables), tutorPayable: round2_(tutorPayable),
+      commissionEarned: round2_(commissionEarned), pendingPayouts: pendingPayouts, overdueCount: overdueCount,
+      overdueAmount: round2_(overdueAmount), openTickets: openTickets, pendingClaims: pendingClaims,
+      interestedMatches: interestedMatches, mailQuotaUsed: getDailyMailCount_(), mailQuotaCap: APP_CONSTANTS.DAILY_MAIL_CAP
+    },
+    recentActivity: audit.slice(-12).reverse()
+  };
+}
+
+function sendNotificationEmail_(role, recipientId, email, templateType, subject, htmlBody, attachments, idempotencyKey, priority) {
+  const now = nowIso_();
+  if (idempotencyKey) {
+    const existing = findRowByField_('Notifications', 'IdempotencyKey', idempotencyKey, true);
+    if (existing && existing.Status === 'SENT') return existing;
+  }
+  const ntfId = generateId_('Notifications', 'NTF');
+  let status = 'SENT', errMsg = '';
+  const sentToday = getDailyMailCount_();
+  const isHigh = priority === 'HIGH';
+
+  if (sentToday >= 95 || (!isHigh && sentToday >= 85)) {
+    status = 'FAILED';
+    errMsg = 'Daily Gmail quota protection triggered (' + sentToday + '/' + APP_CONSTANTS.DAILY_MAIL_CAP + ')';
+  } else {
+    try {
+      const mailOpts = { htmlBody: htmlBody, name: 'TutorSync' };
+      if (attachments && attachments.length > 0) mailOpts.attachments = attachments;
+      GmailApp.sendEmail(email, subject, htmlBody.replace(/<[^>]+>/g, ' '), mailOpts);
+      incrementDailyMailCount_();
+    } catch (e) { status = 'FAILED'; errMsg = e.message; }
+  }
+
+  const rec = {
+    NotificationId: ntfId, IdempotencyKey: idempotencyKey || '', RecipientRole: role, RecipientId: recipientId,
+    RecipientEmail: email, Channel: 'EMAIL', TemplateType: templateType, Subject: cleanStr_(subject, 200),
+    BodyPreview: cleanStr_(htmlBody.replace(/<[^>]+>/g, ' '), 300), Status: status, ErrorMessage: errMsg,
+    SentAt: status === 'SENT' ? now : '', CreatedAt: now
+  };
+  appendRow_('Notifications', rec);
+  return rec;
+}
+
+function notifyAdmin_(subject, htmlBody, idempotencyKey) {
+  const settings = getSettingsMap_();
+  const adminEmail = settings.ADMIN_ALERT_EMAIL || settings.SUPPORT_EMAIL;
+  if (!isValidEmail_(adminEmail)) return null;
+  return sendNotificationEmail_('ADMIN', 'ADMIN', adminEmail, 'ADMIN_ALERT', '[TutorSync Admin] ' + subject, htmlBody, null, idempotencyKey, 'NORMAL');
+}
+
+function handleAdminListNotifications_() { return getAllRows_('Notifications', true).slice(-200).reverse(); }
+
+function handleAdminSendManualNotification_(session, p) {
+  const email = cleanStr_(p.email, 120), subject = cleanStr_(p.subject, 200), message = cleanStr_(p.message, 3000);
+  if (!isValidEmail_(email) || !subject || !message) throw createApiError_('VALIDATION_ERROR', 'Valid email, subject, and message required.');
+  const rec = sendNotificationEmail_(p.role || 'STUDENT', p.recipientId || 'MANUAL', email, 'MANUAL_ADMIN', subject, '<p>' + escapeHtml_(message).replace(/\n/g, '<br>') + '</p>', null, null, 'HIGH');
+  writeAudit_(session.userId, 'ADMIN', 'MANUAL_NOTIFICATION_SENT', 'Notifications', rec.NotificationId, null, rec, subject);
+  return rec;
+}
+
+function handleAdminResolveTicket_(session, p) {
+  const ticket = findRowByField_('SupportTickets', 'TicketId', p.ticketId, false);
+  if (!ticket) throw createApiError_('NOT_FOUND', 'Ticket not found.');
+  const status = cleanStr_(p.status || 'RESOLVED', 30).toUpperCase();
+  if (APP_CONSTANTS.TICKET_STATUSES.indexOf(status) === -1) throw createApiError_('VALIDATION_ERROR', 'Invalid ticket status.');
+  const now = nowIso_();
+  const updated = updateRowByKey_('SupportTickets', 'TicketId', ticket.TicketId, {
+    Status: status, AdminResponse: cleanStr_(p.adminResponse, 1500),
+    ResolvedBy: session.userId, ResolvedAt: (status === 'RESOLVED' || status === 'CLOSED') ? now : '', UpdatedAt: now
+  });
+  writeAudit_(session.userId, 'ADMIN', 'TICKET_UPDATED', 'SupportTickets', ticket.TicketId, ticket, updated, p.adminResponse || '');
+  if (isValidEmail_(ticket.ContactEmail) && p.adminResponse) {
+    sendNotificationEmail_(ticket.RaisedByRole, ticket.LinkedEntityId || ticket.TicketId, ticket.ContactEmail, 'TICKET_UPDATE',
+      'TutorSync Support Update — ' + ticket.TicketId,
+      '<p>Hello ' + escapeHtml_(ticket.ContactName) + ',</p><p>Update on ticket <b>' + ticket.TicketId + '</b> (' + status + '):</p><p>' + escapeHtml_(p.adminResponse) + '</p>',
+      null, null, 'HIGH'
+    );
+  }
+  return updated;
+}
+
+function handleAdminUpdateSettings_(session, p) {
+  const updates = p.settings || [];
+  if (!Array.isArray(updates) || updates.length === 0) throw createApiError_('VALIDATION_ERROR', 'No settings provided.');
+  const current = getSettingsMap_();
+  let defComm = Number(current.DEFAULT_COMMISSION_PCT || 10), minComm = Number(current.MIN_COMMISSION_PCT || 8), maxComm = Number(current.MAX_COMMISSION_PCT || 10);
+  updates.forEach(function (u) {
+    if (u.SettingKey === 'DEFAULT_COMMISSION_PCT') defComm = Number(u.SettingValue);
+    if (u.SettingKey === 'MIN_COMMISSION_PCT') minComm = Number(u.SettingValue);
+    if (u.SettingKey === 'MAX_COMMISSION_PCT') maxComm = Number(u.SettingValue);
+  });
+  if (minComm < 8 || maxComm > 10 || minComm > maxComm) throw createApiError_('VALIDATION_ERROR', 'Standard commission range must remain within 8%–10%.');
+  if (defComm < minComm || defComm > maxComm) throw createApiError_('VALIDATION_ERROR', 'Default commission must fall between ' + minComm + '% and ' + maxComm + '%.');
+
+  const now = nowIso_();
+  updates.forEach(function (u) {
+    updateRowByKey_('Settings', 'SettingKey', u.SettingKey, { SettingValue: String(u.SettingValue), UpdatedAt: now, UpdatedBy: session.userId });
+  });
+  writeAudit_(session.userId, 'ADMIN', 'SETTINGS_UPDATED', 'Settings', 'GLOBAL', current, updates, 'Admin settings update');
+  return getAllRows_('Settings', true);
+}
+
+function handleAdminGetAuditLogs_(p) {
+  let rows = getAllRows_('AuditLog', true);
+  if (p && p.entityType) rows = rows.filter(function (a) { return a.EntityType === p.entityType; });
+  return rows.slice(-300).reverse();
+}
+
+function handleAdminGetReport_(p) {
+  const type = cleanStr_(p.reportType, 50), month = cleanStr_(p.month, 7);
+  const students = getAllRows_('Students', false), tutors = getAllRows_('Tutors', false);
+  const matches = getAllRows_('Matches', false), assignments = getAllRows_('Assignments', false);
+  const invoices = getAllRows_('Invoices', false), payments = getAllRows_('Payments', true);
+  const ledger = getAllRows_('TutorLedger', true), payouts = getAllRows_('Payouts', true);
+  const stuMap = indexBy_(students, 'StudentId'), tutMap = indexBy_(tutors, 'TutorId');
+
+  if (type === 'student_registrations') return { title: 'Student Registration Report', headers: ['StudentId','Name','Phone','ClassGrade','Board','Mode','Budget','Score','Status','CreatedAt'], rows: students.map(function (s) { return [s.StudentId,s.ParentOrStudentName,s.Phone,s.ClassGrade,s.Board,s.TeachingMode,s.BudgetPerMonth,s.ProfileScore,s.Status,s.CreatedAt]; }) };
+  if (type === 'tutor_registrations') return { title: 'Tutor Registration Report', headers: ['TutorId','Name','Phone','Qualifications','ExperienceYears','Mode','ExpectedFee','Score','Status','CreatedAt'], rows: tutors.map(function (t) { return [t.TutorId,t.FullName,t.Phone,t.Qualifications,t.ExperienceYears,t.TeachingMode,t.ExpectedMonthlyFee,t.ProfileScore,t.Status,t.CreatedAt]; }) };
+  if (type === 'verified_participants') {
+    const vRows = [];
+    students.filter(function (s) { return s.Status === 'VERIFIED' || s.Status === 'ACTIVE'; }).forEach(function (s) { vRows.push(['STUDENT', s.StudentId, s.ParentOrStudentName, s.Email, s.Status, s.VerifiedAt]); });
+    tutors.filter(function (t) { return t.Status === 'VERIFIED' || t.Status === 'ACTIVE'; }).forEach(function (t) { vRows.push(['TUTOR', t.TutorId, t.FullName, t.Email, t.Status, t.VerifiedAt]); });
+    return { title: 'Verified Participants Report', headers: ['Role','ID','Name','Email','Status','VerifiedAt'], rows: vRows };
+  }
+  if (type === 'matching') return { title: 'Matching Report', headers: ['MatchId','Student','Tutor','MatchScore','TutorInterest','Status','Notes','CreatedAt'], rows: matches.map(function (m) { return [m.MatchId, stuMap[m.StudentId]?stuMap[m.StudentId].ParentOrStudentName:m.StudentId, tutMap[m.TutorId]?tutMap[m.TutorId].FullName:m.TutorId, m.MatchScore, m.TutorExpressedInterest, m.ShortlistStatus, m.MatchingNotes, m.CreatedAt]; }) };
+  if (type === 'active_tuition') return { title: 'Active Tuition Report', headers: ['AssignmentId','Student','Tutor','Class','Mode','MonthlyFee','CommissionPct','StartDate','Status'], rows: assignments.filter(function (a) { return a.Status === 'ACTIVE'; }).map(function (a) { return [a.AssignmentId, stuMap[a.StudentId]?stuMap[a.StudentId].ParentOrStudentName:a.StudentId, tutMap[a.TutorId]?tutMap[a.TutorId].FullName:a.TutorId, a.ClassGrade, a.TeachingMode, a.AgreedMonthlyFee, a.CommissionRatePct, a.StartDate, a.Status]; }) };
+  if (type === 'monthly_billing') {
+    const list = month ? invoices.filter(function (i) { return i.BillingMonth === month; }) : invoices;
+    return { title: 'Monthly Billing Report', headers: ['InvoiceNumber','BillingMonth','Student','BaseAmount','Adjustment','TotalAmount','Paid','BalanceDue','Status'], rows: list.map(function (i) { return [i.InvoiceNumber, i.BillingMonth, stuMap[i.StudentId]?stuMap[i.StudentId].ParentOrStudentName:i.StudentId, i.BaseTuitionAmount, i.AdjustmentAmount, i.TotalAmount, i.AmountPaid, i.BalanceDue, i.PaymentStatus]; }) };
+  }
+  if (type === 'collections') {
+    const list = month ? payments.filter(function (x) { return String(x.PaymentDate).indexOf(month) === 0; }) : payments;
+    return { title: 'Collection Report', headers: ['ReceiptNumber','Type','PaymentDate','InvoiceId','Student','Amount','Method','TransactionRef'], rows: list.map(function (x) { return [x.ReceiptNumber, x.TransactionType, x.PaymentDate, x.InvoiceId, stuMap[x.StudentId]?stuMap[x.StudentId].ParentOrStudentName:x.StudentId, x.Amount, x.PaymentMethod, x.TransactionRef]; }) };
+  }
+  if (type === 'outstanding_invoices') return { title: 'Outstanding Invoices Report', headers: ['InvoiceNumber','BillingMonth','Student','TotalAmount','AmountPaid','BalanceDue','DueDate','Status'], rows: invoices.filter(function (i) { return Number(i.BalanceDue) > 0 && i.PaymentStatus !== 'CANCELLED'; }).map(function (i) { return [i.InvoiceNumber, i.BillingMonth, stuMap[i.StudentId]?stuMap[i.StudentId].ParentOrStudentName:i.StudentId, i.TotalAmount, i.AmountPaid, i.BalanceDue, i.DueDate, i.PaymentStatus]; }) };
+  if (type === 'commissions' || type === 'revenue') {
+    const list = month ? ledger.filter(function (l) { return l.BillingMonth === month; }) : ledger;
+    return { title: type === 'revenue' ? 'Platform Revenue Report' : 'Commission Report', headers: ['LedgerId','BillingMonth','AssignmentId','Tutor','Collected','CommissionPct','CommissionEarned','NetTutorPayable','PayoutStatus'], rows: list.map(function (l) { return [l.LedgerId, l.BillingMonth, l.AssignmentId, tutMap[l.TutorId]?tutMap[l.TutorId].FullName:l.TutorId, l.EligibleCollectedAmount, l.CommissionRatePct, l.CommissionAmount, l.NetTutorPayable, l.PayoutStatus]; }) };
+  }
+  if (type === 'tutor_payable') {
+    const byTutor = {};
+    ledger.filter(function (l) { return l.PayoutStatus === 'PENDING' || l.PayoutStatus === 'IN_BATCH'; }).forEach(function (l) {
+      if (!byTutor[l.TutorId]) byTutor[l.TutorId] = { gross: 0, comm: 0, net: 0, count: 0 };
+      byTutor[l.TutorId].gross += Number(l.EligibleCollectedAmount); byTutor[l.TutorId].comm += Number(l.CommissionAmount);
+      byTutor[l.TutorId].net += Number(l.NetTutorPayable); byTutor[l.TutorId].count += 1;
+    });
+    return { title: 'Tutor Payable Report', headers: ['TutorId','TutorName','LedgerEntries','GrossCollected','Commission','NetPayable'], rows: Object.keys(byTutor).map(function (tId) { return [tId, tutMap[tId]?tutMap[tId].FullName:tId, byTutor[tId].count, round2_(byTutor[tId].gross), round2_(byTutor[tId].comm), round2_(byTutor[tId].net)]; }) };
+  }
+  if (type === 'payouts') return { title: 'Payout Report', headers: ['PayoutId','BatchCode','Tutor','Period','Gross','Commission','NetPaid','Status','Method','Reference','PayoutDate'], rows: payouts.map(function (x) { return [x.PayoutId, x.BatchCode, tutMap[x.TutorId]?tutMap[x.TutorId].FullName:x.TutorId, x.PeriodLabel, x.GrossCollectedTotal, x.CommissionTotal, x.NetPayoutAmount, x.Status, x.PayoutMethod, x.PayoutReference, x.PayoutDate]; }) };
+  if (type === 'cancellations') return { title: 'Assignment Cancellation Report', headers: ['AssignmentId','Student','Tutor','Class','MonthlyFee','Status','Notes','UpdatedAt'], rows: assignments.filter(function (a) { return a.Status === 'CANCELLED'; }).map(function (a) { return [a.AssignmentId, stuMap[a.StudentId]?stuMap[a.StudentId].ParentOrStudentName:a.StudentId, tutMap[a.TutorId]?tutMap[a.TutorId].FullName:a.TutorId, a.ClassGrade, a.AgreedMonthlyFee, a.Status, a.Notes, a.UpdatedAt]; }) };
+  throw createApiError_('VALIDATION_ERROR', 'Unsupported report type.');
+}
+
+function handleAdminRunTriggerManual_(session, p) {
+  const job = cleanStr_(p.jobName, 60);
+  if (job === 'jobGenerateMonthlyInvoices') return jobGenerateMonthlyInvoices();
+  if (job === 'jobDispatchPendingInvoices') return jobDispatchPendingInvoices();
+  if (job === 'jobCheckOverdueInvoices') return jobCheckOverdueInvoices();
+  if (job === 'jobPendingRegistrationAlert') return jobPendingRegistrationAlert();
+  if (job === 'jobAssignmentExpiryAlert') return jobAssignmentExpiryAlert();
+  if (job === 'jobTutorPayoutReminder') return jobTutorPayoutReminder();
+  if (job === 'jobMonthlyAdminReport') return jobMonthlyAdminReport();
+  if (job === 'jobAutoMatchAndOutreach') return jobAutoMatchAndOutreach();
+  if (job === 'jobAutoPreparePayoutBatches') return jobAutoPreparePayoutBatches();
+  throw createApiError_('VALIDATION_ERROR', 'Unknown job name.');
+}
+
+/* ============================================================================
+ * 11. AUTOPILOT TIME-DRIVEN TRIGGER JOBS (IDEMPOTENT)
+ * ============================================================================ */
+
+function jobAutoMatchAndOutreach() {
+  return withLock_(function () {
+    const settings = getSettingsMap_();
+    if (!settings.AUTO_MATCH_OUTREACH_ENABLED) return { skipped: true };
+    const students = getAllRows_('Students', false).filter(function (s) { return s.Status === 'VERIFIED' || s.Status === 'ACTIVE'; });
+    let totalSent = 0;
+    students.forEach(function (s) { totalSent += runAutoMatchOutreachForStudent_(s, settings); });
+    return { outreachEmailsSent: totalSent };
+  });
+}
+
+function jobAutoPreparePayoutBatches() {
+  return withLock_(function () {
+    const settings = getSettingsMap_();
+    const minThreshold = Number(settings.MIN_PAYOUT_THRESHOLD || 500);
+    const res = runPayoutBatchCore_('', currentMonthStr_(), minThreshold, 'SYSTEM_TRIGGER', 'SYSTEM');
+    if (res.payouts.length > 0) {
+      notifyAdmin_('Gate 4: ' + res.payouts.length + ' Payout Batches Prepared for Transfer',
+        '<p>Autopilot prepared payout batch <b>' + res.batchCode + '</b> (' + res.payouts.length + ' tutors meeting ₹' + minThreshold + ' threshold). Open Critical Gates Inbox to transfer &amp; record UTRs.</p>'
+      );
+    }
+    return { preparedCount: res.payouts.length, batchCode: res.batchCode };
+  });
+}
+
+function jobGenerateMonthlyInvoices() {
+  return withLock_(function () {
+    const settings = getSettingsMap_();
+    if (!settings.AUTO_INVOICE_ENABLED) return { skipped: true };
+    return runMonthlyBillingCore_(currentMonthStr_(), true, 'SYSTEM_TRIGGER', 'SYSTEM');
+  });
+}
+
+function jobDispatchPendingInvoices() {
+  return withLock_(function () {
+    const settings = getSettingsMap_();
+    const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+    const pending = getAllRows_('Invoices', false).filter(function (i) {
+      return i.PaymentStatus === 'ISSUED' && (i.DeliveryStatus === 'PENDING' || i.DeliveryStatus === 'FAILED');
+    });
+    let sent = 0;
+    pending.slice(0, 25).forEach(function (inv) {
+      const stu = students[inv.StudentId];
+      if (stu && isValidEmail_(stu.Email)) { deliverInvoiceEmail_(inv, stu, settings); sent++; }
+    });
+    return { dispatched: sent };
+  });
+}
+
+function jobCheckOverdueInvoices() {
+  return withLock_(function () {
+    const settings = getSettingsMap_();
+    const today = todayIso_();
+    const weekBucket = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-ww');
+    const students = indexBy_(getAllRows_('Students', true), 'StudentId');
+    let marked = 0, reminded = 0;
+    getAllRows_('Invoices', false).forEach(function (inv) {
+      if ((inv.PaymentStatus === 'ISSUED' || inv.PaymentStatus === 'PARTIALLY_PAID' || inv.PaymentStatus === 'OVERDUE') &&
+        Number(inv.BalanceDue) > 0 && inv.DueDate && String(inv.DueDate) < today) {
+        if (inv.PaymentStatus !== 'OVERDUE') {
+          updateRowByKey_('Invoices', 'InvoiceId', inv.InvoiceId, { PaymentStatus: 'OVERDUE', UpdatedAt: nowIso_() });
+          marked++;
+        }
+        if (settings.AUTO_REMINDERS_ENABLED) {
+          const stu = students[inv.StudentId];
+          if (stu && isValidEmail_(stu.Email)) {
+            const idemp = 'OVERDUE_' + inv.InvoiceId + '_' + weekBucket;
+            if (!findRowByField_('Notifications', 'IdempotencyKey', idemp, true)) {
+              const upiUri = buildUpiUri_(settings, inv.BalanceDue, inv.InvoiceNumber);
+              sendNotificationEmail_('STUDENT', stu.StudentId, stu.Email, 'OVERDUE_REMINDER',
+                'Payment Reminder: Invoice ' + inv.InvoiceNumber,
+                '<p>Dear ' + escapeHtml_(stu.ParentOrStudentName) + ',</p><p>Invoice <b>' + escapeHtml_(inv.InvoiceNumber) + '</b> (Due: ' + escapeHtml_(inv.DueDate) + ') has an outstanding balance of <b>₹' + Number(inv.BalanceDue).toFixed(2) + '</b>.</p>' +
+                (upiUri ? '<p><a href="' + escapeHtml_(upiUri) + '">Pay Now via UPI</a></p>' : '') +
+                '<p>' + escapeHtml_(settings.PAYMENT_INSTRUCTIONS || '') + '</p>',
+                null, idemp, 'NORMAL'
+              );
+              reminded++;
+            }
+          }
+        }
+      }
+    });
+    writeAudit_('SYSTEM_TRIGGER', 'SYSTEM', 'OVERDUE_CHECK_RUN', 'Invoices', today, null, { markedOverdue: marked, remindersSent: reminded }, 'Daily trigger');
+    return { markedOverdue: marked, remindersSent: reminded };
+  });
+}
+
+function jobPendingRegistrationAlert() {
+  return withLock_(function () {
+    const cutoff = Date.now() - 86400000;
+    const stuPending = getAllRows_('Students', false).filter(function (s) { return (s.Status === 'NEW' || s.Status === 'UNDER_REVIEW') && new Date(s.CreatedAt).getTime() < cutoff; }).length;
+    const tutPending = getAllRows_('Tutors', false).filter(function (t) { return (t.Status === 'NEW' || t.Status === 'UNDER_REVIEW') && new Date(t.CreatedAt).getTime() < cutoff; }).length;
+    if (stuPending > 0 || tutPending > 0) {
+      notifyAdmin_('Gate 1 Alert: Pending Verifications (' + (stuPending + tutPending) + ')',
+        '<p>Pending review &gt; 24h:<br><b>Students:</b> ' + stuPending + '<br><b>Tutors:</b> ' + tutPending + '</p>', 'PENDING_REG_' + todayIso_());
+    }
+    return { stuPending: stuPending, tutPending: tutPending };
+  });
+}
+
+function jobAssignmentExpiryAlert() {
+  return withLock_(function () {
+    const in7Days = Utilities.formatDate(new Date(Date.now() + 7 * 86400000), 'Asia/Kolkata', 'yyyy-MM-dd');
+    const todayStr = todayIso_();
+    let alerts = 0;
+    getAllRows_('Assignments', false).forEach(function (a) {
+      if (a.Status === 'ACTIVE' && a.EndDate && String(a.EndDate) >= todayStr && String(a.EndDate) <= in7Days) {
+        const key = 'EXPIRY_' + a.AssignmentId;
+        if (!findRowByField_('Notifications', 'IdempotencyKey', key, true)) {
+          notifyAdmin_('Assignment Ending Soon: ' + a.AssignmentId, '<p>Assignment <b>' + a.AssignmentId + '</b> ends on <b>' + escapeHtml_(a.EndDate) + '</b>.</p>', key);
+          alerts++;
+        }
+      }
+    });
+    return { alertsSent: alerts };
+  });
+}
+
+function jobTutorPayoutReminder() {
+  return withLock_(function () {
+    const pending = getAllRows_('TutorLedger', true).filter(function (l) { return l.PayoutStatus === 'PENDING'; });
+    let total = 0;
+    pending.forEach(function (l) { total += Number(l.NetTutorPayable); });
+    if (pending.length > 0 && total > 0) {
+      notifyAdmin_('Weekly Tutor Payable Summary (₹' + round2_(total) + ')',
+        '<p><b>' + pending.length + '</b> pending ledger lines totaling <b>₹' + round2_(total).toFixed(2) + '</b>.</p>',
+        'PAYOUT_REM_' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-ww')
+      );
+    }
+    return { pendingEntries: pending.length, totalPayable: round2_(total) };
+  });
+}
+
+function jobMonthlyAdminReport() {
+  return withLock_(function () {
+    const k = handleAdminDashboard_().kpis;
+    notifyAdmin_('Monthly Operations & Finance Digest',
+      '<ul><li>Active Tuitions: ' + k.activeAssignments + '</li><li>Month Invoiced: ₹' + k.monthInvoiced + '</li><li>Month Collected: ₹' + k.monthCollected + '</li><li>Receivables: ₹' + k.outstandingReceivables + '</li><li>Commission Earned: ₹' + k.commissionEarned + '</li><li>Tutor Payable: ₹' + k.tutorPayable + '</li></ul>',
+      'MONTHLY_DIGEST_' + currentMonthStr_()
+    );
+    return { sent: true };
+  });
+}
