@@ -1,0 +1,115 @@
+<!-- ===== TUTORSYNC PREMIUM LAYER =====
+PASTE this whole block immediately BEFORE </head> in index.html (after the existing <style>).
+No existing code is removed; later rules override the earlier ones. -->
+<meta name="theme-color" content="#0f2942" />
+<style id="ts-premium">
+:root{
+  --primary:#0b1f33;--primary-hover:#12304d;--accent:#2563eb;--accent-light:#eaf1ff;
+  --surface:#f7f8fa;--surface-alt:#eef1f5;--border:#e5e8ee;--text:#101828;--text-muted:#5b667a;
+  --radius:12px;--shadow-sm:0 1px 2px rgba(16,24,40,.05);--shadow-md:0 8px 24px rgba(16,24,40,.08);
+  --ring:0 0 0 3px rgba(37,99,235,.25);
+  --font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+body{font-size:15px;letter-spacing:-.003em;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{letter-spacing:-.02em}
+.skip-link{position:absolute;left:-999px;top:8px;background:#fff;padding:.5rem .8rem;border-radius:8px;z-index:300}
+.skip-link:focus{left:8px}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:8px}
+/* header */
+.site-header{background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px)}
+.nav-links a{padding:.35rem .5rem;border-radius:8px}.nav-links a:hover{background:var(--surface-alt)}
+.brand-mark{background:linear-gradient(135deg,#0b1f33,#2563eb)}
+/* controls */
+.btn{min-height:44px;border-radius:10px;font-weight:600;transition:background .15s,box-shadow .15s,transform .1s}
+.btn-sm{min-height:36px;border-radius:8px}
+.btn-primary{box-shadow:0 1px 2px rgba(16,24,40,.2),inset 0 1px 0 rgba(255,255,255,.12)}
+.btn-accent{background:var(--accent)}.btn-accent:hover:not(:disabled){background:#1d4ed8}
+.btn-outline{background:#fff}
+input,select,textarea{min-height:46px;border-radius:10px;border-color:#d0d5dd;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;box-shadow:var(--ring);border-color:var(--accent)}
+input:user-invalid,select:user-invalid,textarea:user-invalid{border-color:var(--danger)}
+input[type=checkbox]{min-height:0;width:18px;height:18px}
+.chip-label{min-height:40px;padding:.45rem .8rem;transition:all .15s}
+.chip-label:has(input:checked){background:var(--accent-light);border-color:var(--accent);color:var(--primary)}
+/* cards */
+.card,.kpi-card,.dir-card,.edu-slide{border-radius:var(--radius);border-color:var(--border)}
+.card{box-shadow:var(--shadow-sm)}
+.kpi-card{border-top:0;box-shadow:var(--shadow-sm)}.kpi-val{letter-spacing:-.02em}
+.hero{background-image:radial-gradient(60% 80% at 80% 0%,#dbe7ff 0,transparent 60%),radial-gradient(#d5dbe6 .8px,transparent .8px);background-size:auto,24px 24px}
+.section{padding:3.25rem 0}
+/* tables */
+.table-wrap{border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+th{font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);background:var(--surface)}
+tbody tr:hover td{background:#f9fafc}
+/* modal & toast */
+.modal-backdrop{backdrop-filter:blur(3px);animation:tsFade .15s}
+.modal-box{border-radius:16px;animation:tsPop .18s ease-out}
+.toast{border-radius:12px;animation:tsPop .2s ease-out;box-shadow:var(--shadow-md)}
+.loader-overlay{backdrop-filter:blur(2px)}
+@keyframes tsFade{from{opacity:0}}@keyframes tsPop{from{opacity:0;transform:translateY(6px) scale(.98)}}
+.skeleton{background:linear-gradient(90deg,#eef1f5 25%,#f7f8fa 37%,#eef1f5 63%);background-size:400% 100%;animation:tsSk 1.3s infinite;border-radius:10px;min-height:90px}
+@keyframes tsSk{to{background-position:-100% 0}}
+.empty-state{border:1px dashed var(--border);border-radius:12px;background:var(--surface)}
+.badge{letter-spacing:.02em}
+/* never scroll sideways */
+html,body{max-width:100%;overflow-x:hidden}img,svg{max-width:100%}
+.container{padding-left:max(1rem,env(safe-area-inset-left));padding-right:max(1rem,env(safe-area-inset-right))}
+/* MOBILE */
+@media (max-width:720px){
+  .nav-bar{height:56px}
+  .topbar-portal>div:last-child{width:100%;overflow-x:auto;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+  .topbar-portal>div:last-child::-webkit-scrollbar{display:none}
+  .topbar-portal>div:last-child .btn{flex:0 0 auto}
+  .hero h1{font-size:1.7rem}.section{padding:2.25rem 0}
+  .modal-backdrop{align-items:flex-end;padding:0}
+  .modal-box{max-width:100%;border-radius:18px 18px 0 0;max-height:92vh}
+  #toast-container{left:.75rem;right:.75rem;top:auto;bottom:calc(76px + env(safe-area-inset-bottom));max-width:none}
+  form .btn-block[type=submit]{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));z-index:5;box-shadow:var(--shadow-md)}
+  /* tables -> stacked cards (data-label added by script below) */
+  .table-wrap{border:0;box-shadow:none;background:none;overflow:visible}
+  table.ts-stack{min-width:0}
+  table.ts-stack thead{display:none}
+  table.ts-stack tr{display:block;background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:.7rem;padding:.35rem .2rem;box-shadow:var(--shadow-sm)}
+  table.ts-stack td{display:flex;justify-content:space-between;gap:.8rem;text-align:right;border:0;padding:.4rem .7rem}
+  table.ts-stack td::before{content:attr(data-label);font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;text-align:left;flex:0 0 38%}
+  table.ts-stack td[colspan]{display:block;text-align:center}table.ts-stack td[colspan]::before{content:none}
+  table.ts-stack td:last-child>div,table.ts-stack td:last-child{justify-content:flex-end}
+  .num{text-align:right}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{.site-header,.mobile-cta-bar,#toast-container{display:none}}
+</style>
+<script>
+/* ===== Premium layer runtime (safe, additive) ===== */
+(function(){
+  /* FIX: inline onclick="toast(...)" calls a global that did not exist (ReferenceError on "Copy Link") */
+  if(typeof window.toast!=='function'){window.toast=function(m,t){var c=document.getElementById('toast-container');if(!c)return;var e=document.createElement('div');e.className='toast '+(t||'');e.textContent=m;c.appendChild(e);setTimeout(function(){e.remove()},4500)}}
+  document.addEventListener('DOMContentLoaded',function(){
+    var b=document.body,a=document.createElement('a');a.href='#app-root';a.className='skip-link';a.textContent='Skip to content';
+    a.onclick=function(e){e.preventDefault();var m=document.getElementById('app-root');m.setAttribute('tabindex','-1');m.focus()};b.insertBefore(a,b.firstChild);
+    var tc=document.getElementById('toast-container');if(tc){tc.setAttribute('role','status');tc.setAttribute('aria-live','polite')}
+    var ld=document.getElementById('loader');if(ld){ld.setAttribute('role','alert');ld.setAttribute('aria-busy','true')}
+    var mb=document.getElementById('modal-backdrop'),box=mb&&mb.querySelector('.modal-box');
+    if(box){box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','modal-title')}
+    var last=null;
+    if(mb){new MutationObserver(function(){
+      var open=!mb.classList.contains('hidden');
+      document.body.style.overflow=open?'hidden':'';
+      if(open){last=document.activeElement;var f=mb.querySelector('input,select,textarea,button');f&&setTimeout(function(){f.focus({preventScroll:true})},50)}
+      else if(last&&last.focus){last.focus();last=null}
+    }).observe(mb,{attributes:true,attributeFilter:['class']})}
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&mb&&!mb.classList.contains('hidden')&&window.App)App.closeModal()});
+    /* label every <td> from its <th> so mobile can stack tables as cards */
+    function stack(root){root.querySelectorAll('table:not(.ts-stack)').forEach(function(t){
+      var h=[].map.call(t.querySelectorAll('thead th'),function(x){return x.textContent.trim()});
+      if(!h.length)return;t.classList.add('ts-stack');
+      t.querySelectorAll('tbody tr').forEach(function(r){[].forEach.call(r.children,function(td,i){if(h[i]!==undefined&&!td.hasAttribute('data-label'))td.setAttribute('data-label',h[i])})})})}
+    var pend=0;function sched(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;stack(document)})}
+    new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});sched();
+    /* skeleton for the plain "Loading..." cards */
+    new MutationObserver(function(){document.querySelectorAll('.card').forEach(function(c){
+      if(!c.dataset.sk&&/^Loading/.test(c.textContent.trim())&&c.children.length===0){c.dataset.sk=1;c.classList.add('skeleton');c.setAttribute('aria-busy','true')}})
+    }).observe(document.getElementById('app-root')||document.body,{childList:true,subtree:true});
+  });
+})();
+</script>
