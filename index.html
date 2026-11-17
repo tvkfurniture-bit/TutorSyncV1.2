@@ -109,8 +109,22 @@
       border: 1px solid var(--border); border-radius: 999px; font-size: 0.82rem; font-weight: 500;
       cursor: pointer; background: var(--surface); user-select: none; -webkit-tap-highlight-color: transparent;
     }
-    .chip-label input { width: auto; min-height: auto; margin: 0; }
-    .help-text { font-size: 0.78rem; color: var(--text-muted); word-break: break-word; }
+    .chip-label input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  cursor: pointer;
+  -webkit-appearance: checkbox !important;
+  appearance: checkbox !important;
+  accent-color: var(--primary);
+}
+.chip-label:has(input:checked) {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--primary);
+  font-weight: 700;
+}    .help-text { font-size: 0.78rem; color: var(--text-muted); word-break: break-word; }
 
     /* Header */
     .site-header {
