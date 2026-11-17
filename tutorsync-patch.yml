@@ -1,0 +1,69 @@
+name: TutorSync - Apply premium UI patch
+
+# Run manually: repo > Actions tab > "TutorSync - Apply premium UI patch" > Run workflow
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify required files exist in repo root
+        run: |
+          for f in index.html Code.gs tutorsync-premium-layer.html apply_tutorsync_patch.py; do
+            if [ ! -f "$f" ]; then echo "::error::Missing $f in repository root"; exit 1; fi
+          done
+
+      - name: Skip if already patched
+        id: check
+        run: |
+          if grep -q 'id="ts-premium"' index.html; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "index.html already contains the premium layer - nothing to do."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.check.outputs.already == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run patch script
+        if: steps.check.outputs.already == 'false'
+        run: python3 apply_tutorsync_patch.py
+
+      - name: Keep a backup of the original index.html
+        if: steps.check.outputs.already == 'false'
+        run: |
+          mkdir -p backup-original
+          cp index.html backup-original/index.html
+
+      - name: Install patched index.html (Code.gs is NOT committed)
+        if: steps.check.outputs.already == 'false'
+        run: cp out/index.html index.html
+
+      - name: Upload patched files (download Code.gs from here)
+        if: steps.check.outputs.already == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tutorsync-patched
+          path: |
+            out/index.html
+            out/Code.gs
+
+      - name: Commit patched index.html
+        if: steps.check.outputs.already == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html backup-original/index.html
+          git commit -m "Apply TutorSync premium UI layer and bug fixes" || echo "No changes to commit"
+          git push
